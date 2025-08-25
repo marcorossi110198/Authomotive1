@@ -3,11 +3,13 @@ using System;
 namespace ClusterAudi
 {
 	/// <summary>
-	/// Interface per VehicleDataService.
-	/// Segue pattern identico a IAssetService del progetto base.
+	/// Interface per VehicleDataService - VERSIONE COMPLETA.
+	/// Include tutti i metodi avanzati utilizzati dagli stati delle modalità.
 	/// </summary>
 	public interface IVehicleDataService : IService
 	{
+		#region Properties Base (già esistenti)
+
 		// Properties di sola lettura per accesso ai dati
 		float CurrentSpeed { get; }
 		float CurrentRPM { get; }
@@ -27,5 +29,35 @@ namespace ClusterAudi
 		void SetGear(int gear);
 		void SetDriveMode(DriveMode mode);
 		void SetEngineRunning(bool isRunning);
+
+		#endregion
+
+		#region Metodi Avanzati per Stati Modalità (AGGIUNTI)
+
+		// Dati di base avanzati
+		float GetThrottlePosition();
+		float GetBrakeForce();
+		float GetAcceleration();
+		float GetMaxRPM();
+
+		// Dati efficienza (per EcoMode)
+		float GetCurrentConsumption();
+		float GetEstimatedRange();
+
+		// Metodi per calcoli avanzati (per SportMode)
+		float GetAccelerationSmoothness();
+		float GetSpeedStability();
+		float GetGearUsageOptimality();
+		float GetDrivingEfficiency();
+		float GetRPMEfficiency();
+		float GetAccelerationControl();
+		float GetCorneringPerformance();
+		float GetRawSpeed(); // Per ComfortMode smoothing
+
+		// Metodi di configurazione avanzata
+		void SetThrottlePosition(float throttle);
+		void SetBrakeForce(float brake);
+
+		#endregion
 	}
 }
