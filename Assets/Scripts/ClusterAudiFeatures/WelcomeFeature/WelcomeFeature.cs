@@ -55,9 +55,87 @@ namespace ClusterAudiFeatures
 			}
 		}
 
+		/// <summary>
+		/// Crea Welcome Screen caricando il prefab - PATTERN MERCEDES
+		/// </summary>
 		private async Task CreateWelcomeScreen()
 		{
-			Debug.Log("[WELCOME FEATURE] 🔧 Creazione Welcome Screen...");
+			Debug.Log("[WELCOME FEATURE] 🔧 Creazione Welcome Screen da prefab...");
+
+			try
+			{
+				// METODO 1: Carica prefab via AssetService (IDENTICO a Mercedes)
+				var welcomeScreenInstance = await _assetService.InstantiateAsset<WelcomeScreenBehaviour>(WelcomeData.WELCOME_SCREEN_PREFAB_PATH);
+
+				if (welcomeScreenInstance != null)
+				{
+					// Prefab caricato con successo
+					Debug.Log("[WELCOME FEATURE] ✅ Prefab caricato da Resources");
+					welcomeScreenInstance.Initialize(this);
+				}
+				else
+				{
+					// Fallback: Carica prefab direttamente da Resources
+					await CreateWelcomeScreenFromResources();
+				}
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogError($"[WELCOME FEATURE] ❌ Errore caricamento prefab: {ex.Message}");
+
+				// Fallback: Carica prefab direttamente
+				await CreateWelcomeScreenFromResources();
+			}
+
+			Debug.Log("[WELCOME FEATURE] ✅ Welcome Screen creato");
+		}
+
+		/// <summary>
+		/// Fallback: Carica prefab direttamente da Resources
+		/// </summary>
+		private async Task CreateWelcomeScreenFromResources()
+		{
+			Debug.Log("[WELCOME FEATURE] 🔄 Fallback: Caricamento diretto da Resources...");
+
+			await Task.Delay(100);
+
+			// Carica prefab direttamente
+			GameObject prefab = Resources.Load<GameObject>("WelcomeScreen/WelcomeScreenPrefab");
+
+			if (prefab != null)
+			{
+				// Istanzia prefab
+				GameObject welcomeInstance = Object.Instantiate(prefab);
+
+				// Ottieni WelcomeScreenBehaviour dal prefab
+				var welcomeBehaviour = welcomeInstance.GetComponent<WelcomeScreenBehaviour>();
+
+				if (welcomeBehaviour == null)
+				{
+					// Aggiungi component se non presente
+					welcomeBehaviour = welcomeInstance.AddComponent<WelcomeScreenBehaviour>();
+				}
+
+				// Inizializza
+				welcomeBehaviour.Initialize(this);
+
+				Debug.Log("[WELCOME FEATURE] ✅ Prefab caricato via Resources.Load");
+			}
+			else
+			{
+				Debug.LogError("[WELCOME FEATURE] ❌ Impossibile caricare prefab da Resources/WelcomeScreen/WelcomeScreenPrefab");
+
+				// Ultimo fallback: Crea dinamicamente (metodo precedente)
+				await CreateWelcomeScreenDynamically();
+			}
+		}
+
+		/// <summary>
+		/// Ultimo fallback: Crea UI dinamicamente (metodo precedente)
+		/// </summary>
+		private async Task CreateWelcomeScreenDynamically()
+		{
+			Debug.Log("[WELCOME FEATURE] 🔧 Ultimo fallback: Creazione dinamica...");
 
 			await Task.Delay(100);
 
@@ -93,7 +171,7 @@ namespace ClusterAudiFeatures
 			// Inizializza il behaviour
 			welcomeBehaviour.Initialize(this);
 
-			Debug.Log("[WELCOME FEATURE] ✅ Welcome Screen creato");
+			Debug.Log("[WELCOME FEATURE] ✅ Welcome Screen creato dinamicamente");
 		}
 
 		#endregion

@@ -163,26 +163,54 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Controlla se ci sono richieste di cambio modalità
+		/// Controlla se ci sono richieste di cambio modalità - FIXED
 		/// </summary>
 		private void CheckModeTransitions()
 		{
-			// Debug keys per testing
-			if (Input.GetKeyDown(KeyCode.F1)) // Debug key per Eco
+			// DEBUG: Log per verificare che Update venga chiamato
+			if (Input.GetKeyDown(KeyCode.F5))
 			{
-				_context.ClusterStateMachine.GoTo("EcoModeState");
-				Debug.Log("[SPORT MODE] Richiesta transizione a Eco Mode (placeholder)");
+				Debug.Log("[ECO MODE] 🔧 DEBUG: StateOnUpdate funziona!");
 			}
-			else if (Input.GetKeyDown(KeyCode.F2)) // Debug key per Comfort
+
+			// F1: ECO Mode (già attivo)
+			if (Input.GetKeyDown(KeyCode.F1))
 			{
+				Debug.Log("[ECO MODE] 🟢 F1 premuto - Già in Eco Mode");
+			}
+			// F2: COMFORT Mode
+			else if (Input.GetKeyDown(KeyCode.F2))
+			{
+				Debug.Log("[ECO MODE] 🔵 F2 premuto - Transizione a Comfort Mode");
 				_context.ClusterStateMachine.GoTo("ComfortModeState");
-				Debug.Log("[SPORT MODE] Richiesta transizione a Comfort Mode (placeholder)");
 			}
-			else if (Input.GetKeyDown(KeyCode.F4)) // Debug key per Welcome
+			// F3: SPORT Mode
+			else if (Input.GetKeyDown(KeyCode.F3))
 			{
-				_context.ClusterStateMachine.GoTo("WelcomeState");
-				Debug.Log("[SPORT MODE] Richiesta transizione a Welcome State (placeholder)");
+				Debug.Log("[ECO MODE] 🔴 F3 premuto - Transizione a Sport Mode");
+				_context.ClusterStateMachine.GoTo("SportModeState");
 			}
+			// F4: WELCOME Mode
+			else if (Input.GetKeyDown(KeyCode.F4))
+			{
+				Debug.Log("[ECO MODE] 🎉 F4 premuto - Transizione a Welcome State");
+				_context.ClusterStateMachine.GoTo("WelcomeState");
+			}
+
+			// ESC: Info debug
+			else if (Input.GetKeyDown(KeyCode.Escape))
+			{
+				Debug.Log("[ECO MODE] 📍 ESC premuto - Info stato corrente");
+				LogCurrentModeInfo();
+			}
+		}
+
+		private void LogCurrentModeInfo()
+		{
+			Debug.Log("=== ECO MODE INFO ===");
+			Debug.Log($"Current State: {_context.ClusterStateMachine.GetCurrentState()?.GetType().Name}");
+			Debug.Log($"Vehicle Mode: {_vehicleDataService.CurrentDriveMode}");
+			Debug.Log("F1=Eco | F2=Comfort | F3=Sport | F4=Welcome");
 		}
 
 		/// <summary>

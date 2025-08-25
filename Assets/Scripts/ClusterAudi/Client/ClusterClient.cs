@@ -13,11 +13,12 @@ namespace ClusterAudi
 		[SerializeField] private bool _autoStartOnAwake = true;
 		[SerializeField] private bool _enableDebugMode = true;
 
+		private ClusterFSM _clusterStateMachine;
+
 		public override void InitFeatures()
 		{
 			Debug.Log("[CLUSTER CLIENT] 🚗 Inizializzazione Features...");
 
-			// Per ora implementiamo solo il placeholder
 			// Nelle prossime fasi aggiungeremo WelcomeFeature, DriveModeFeature, etc.
 
 			// TODO: Aggiungere features quando le implementiamo:
@@ -86,6 +87,9 @@ namespace ClusterAudi
 			{
 				HandleDebugInput();
 			}
+
+			// AGGIUNTO: Update State Machine ogni frame
+			UpdateStateMachine();
 		}
 
 		private void HandleDebugInput()
@@ -163,6 +167,26 @@ namespace ClusterAudi
 		private void OnTestEventReceived(TestEvent testEvent)
 		{
 			Debug.Log($"[CLUSTER CLIENT] 📨 Evento di test ricevuto: {testEvent.Message}");
+		}
+
+		/// <summary>
+		/// Aggiorna la State Machine se disponibile - QUESTO È IL FIX!
+		/// </summary>
+		private void UpdateStateMachine()
+		{
+			if (_clusterStateMachine != null)
+			{
+				_clusterStateMachine.UpdateState();
+			}
+		}
+
+		/// <summary>
+		/// Imposta il riferimento alla State Machine (chiamato da ClusterStartUpFlow)
+		/// </summary>
+		public void SetStateMachine(ClusterFSM stateMachine)
+		{
+			_clusterStateMachine = stateMachine;
+			Debug.Log("[CLUSTER CLIENT] 🎰 State Machine collegata per Update");
 		}
 
 		#endregion

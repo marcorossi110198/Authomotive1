@@ -271,28 +271,48 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Gestisce transizioni tra modalità con controlli sport-specific
+		/// Gestisce transizioni tra modalità - FIXED
 		/// </summary>
 		private void CheckModeTransitions()
 		{
-			// Debug keys per testing
-			if (Input.GetKeyDown(KeyCode.F1)) // Debug key per Eco
+			// DEBUG: Log per verificare che Update venga chiamato
+			if (Input.GetKeyDown(KeyCode.F5))
 			{
-				_context.ClusterStateMachine.GoTo("EcoModeState");
-				Debug.Log("[SPORT MODE] Richiesta transizione a Eco Mode (placeholder)");
-			}
-			else if (Input.GetKeyDown(KeyCode.F2)) // Debug key per Comfort
-			{
-				_context.ClusterStateMachine.GoTo("ComfortModeState");
-				Debug.Log("[SPORT MODE] Richiesta transizione a Comfort Mode (placeholder)");
-			}
-			else if (Input.GetKeyDown(KeyCode.F4)) // Debug key per Welcome
-			{
-				_context.ClusterStateMachine.GoTo("WelcomeState");
-				Debug.Log("[SPORT MODE] Richiesta transizione a Welcome State (placeholder)");
+				Debug.Log("[SPORT MODE] 🔧 DEBUG: StateOnUpdate funziona!");
 			}
 
-			// Sport-specific controls
+			// F1: ECO Mode
+			if (Input.GetKeyDown(KeyCode.F1))
+			{
+				Debug.Log("[SPORT MODE] 🟢 F1 premuto - Transizione a Eco Mode");
+				_context.ClusterStateMachine.GoTo("EcoModeState");
+			}
+			// F2: COMFORT Mode
+			else if (Input.GetKeyDown(KeyCode.F2))
+			{
+				Debug.Log("[SPORT MODE] 🔵 F2 premuto - Transizione a Comfort Mode");
+				_context.ClusterStateMachine.GoTo("ComfortModeState");
+			}
+			// F3: SPORT Mode (già attivo)
+			else if (Input.GetKeyDown(KeyCode.F3))
+			{
+				Debug.Log("[SPORT MODE] 🔴 F3 premuto - Già in Sport Mode");
+			}
+			// F4: WELCOME Mode
+			else if (Input.GetKeyDown(KeyCode.F4))
+			{
+				Debug.Log("[SPORT MODE] 🎉 F4 premuto - Transizione a Welcome State");
+				_context.ClusterStateMachine.GoTo("WelcomeState");
+			}
+
+			// ESC: Info debug
+			else if (Input.GetKeyDown(KeyCode.Escape))
+			{
+				Debug.Log("[SPORT MODE] 📍 ESC premuto - Info stato corrente");
+				LogCurrentModeInfo();
+			}
+
+			// Sport-specific controls (mantieni quelli esistenti)
 			if (Input.GetKeyDown(KeyCode.L)) // Lap timer toggle
 			{
 				ToggleLapTimer();
@@ -302,6 +322,14 @@ namespace ClusterAudiFeatures
 			{
 				ResetSessionRecords();
 			}
+		}
+
+		private void LogCurrentModeInfo()
+		{
+			Debug.Log("=== SPORT MODE INFO ===");
+			Debug.Log($"Current State: {_context.ClusterStateMachine.GetCurrentState()?.GetType().Name}");
+			Debug.Log($"Vehicle Mode: {_vehicleDataService.CurrentDriveMode}");
+			Debug.Log("F1=Eco | F2=Comfort | F3=Sport | F4=Welcome | L=LapTimer | R=Reset");
 		}
 
 		#region Performance Calculations

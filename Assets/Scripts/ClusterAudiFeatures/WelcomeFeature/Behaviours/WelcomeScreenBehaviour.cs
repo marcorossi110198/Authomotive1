@@ -13,8 +13,9 @@ namespace ClusterAudiFeatures
 	/// Funzionalità:
 	/// - Logo animato (fade in + pulsazione + fade out)
 	/// - Timer 5 secondi con transizione automatica
-	/// - Debug keys F1-F4 per testing
+	/// - Debug keys ESC per testing
 	/// - Integration completa con WelcomeFeature
+	/// - USA SOLO COMPONENTI DEL PREFAB
 	/// </summary>
 	public class WelcomeScreenBehaviour : BaseMonoBehaviour<IWelcomeFeatureInternal>
 	{
@@ -74,8 +75,8 @@ namespace ClusterAudiFeatures
 			// Gestione input debug
 			HandleDebugInput();
 
-			// Update timer UI
-			UpdateTimerDisplay();
+			// Update progress slider (SOLO la progress bar viene aggiornata dal codice)
+			UpdateProgressSlider();
 		}
 
 		protected override void ManagedOnDestroy()
@@ -99,43 +100,118 @@ namespace ClusterAudiFeatures
 		#region Welcome Sequence
 
 		/// <summary>
-		/// Setup iniziale dell'UI
+		/// Setup iniziale dell'UI - VERSIONE SOLO PREFAB
 		/// </summary>
 		private void SetupInitialUI()
 		{
-			// Configura canvas group
+			Debug.Log("[WELCOME SCREEN] 🔧 Setup UI da prefab...");
+
+			// 1. OTTIENI CANVAS GROUP (dovrebbe essere sul root Canvas del prefab)
+			_welcomeCanvasGroup = GetComponentInParent<CanvasGroup>();
+			if (_welcomeCanvasGroup == null)
+			{
+				Debug.LogWarning("[WELCOME SCREEN] ⚠️ CanvasGroup non trovato sul Canvas root");
+				// Cerca in children o aggiungi al Canvas parent
+				var canvas = GetComponentInParent<Canvas>();
+				if (canvas != null)
+				{
+					_welcomeCanvasGroup = canvas.gameObject.AddComponent<CanvasGroup>();
+				}
+			}
+
 			if (_welcomeCanvasGroup != null)
 			{
 				_welcomeCanvasGroup.alpha = 0f; // Inizia invisibile
+				Debug.Log("[WELCOME SCREEN] ✅ CanvasGroup configurato");
 			}
 
-			// Configura logo
+			// 2. VERIFICA COMPONENTI PREFAB
+			ValidateUIComponents();
+
+			// 3. CONFIGURA COMPONENTI (solo valori iniziali, NON modifica testi)
+			ConfigureUIComponents();
+
+			Debug.Log("[WELCOME SCREEN] ✅ UI configurata da prefab");
+		}
+
+		/// <summary>
+		/// Verifica che tutti i SerializeField siano assegnati nel prefab
+		/// </summary>
+		private void ValidateUIComponents()
+		{
+			int missingComponents = 0;
+
+			if (_audiLogo == null)
+			{
+				Debug.LogError("[WELCOME SCREEN] ❌ _audiLogo non assegnato nell'Inspector!");
+				missingComponents++;
+			}
+
+			if (_welcomeText == null)
+			{
+				Debug.LogError("[WELCOME SCREEN] ❌ _welcomeText non assegnato nell'Inspector!");
+				missingComponents++;
+			}
+
+			if (_timerText == null)
+			{
+				Debug.LogError("[WELCOME SCREEN] ❌ _timerText non assegnato nell'Inspector!");
+				missingComponents++;
+			}
+
+			if (_progressSlider == null)
+			{
+				Debug.LogError("[WELCOME SCREEN] ❌ _progressSlider non assegnato nell'Inspector!");
+				missingComponents++;
+			}
+
+			if (missingComponents == 0)
+			{
+				Debug.Log("[WELCOME SCREEN] ✅ Tutti i SerializeField assegnati correttamente");
+			}
+			else
+			{
+				Debug.LogError($"[WELCOME SCREEN] ❌ {missingComponents} componenti non assegnati! Configura il prefab.");
+			}
+		}
+
+		/// <summary>
+		/// Configura valori iniziali dei componenti
+		/// NON modifica testi - mantiene tutto dal prefab
+		/// </summary>
+		private void ConfigureUIComponents()
+		{
+			// Logo: inizia trasparente per animazione fade-in
 			if (_audiLogo != null)
 			{
-				_audiLogo.color = WelcomeData.AUDI_LOGO_COLOR;
+				var logoColor = _audiLogo.color;
+				logoColor.a = 0f; // Trasparente per fade-in
+				_audiLogo.color = logoColor;
 				_audiLogo.transform.localScale = Vector3.one;
+				Debug.Log("[WELCOME SCREEN] ✅ AudiLogo configurato");
 			}
 
-			// Configura testi
+			// Welcome Text: MANTIENI COMPLETAMENTE dal prefab
 			if (_welcomeText != null)
 			{
-				_welcomeText.text = WelcomeData.WELCOME_TEXT;
-				_welcomeText.color = WelcomeData.WELCOME_TEXT_COLOR;
+				Debug.Log($"[WELCOME SCREEN] ✅ WelcomeText: '{_welcomeText.text}' (dal prefab)");
 			}
 
+			// Timer Text: MANTIENI COMPLETAMENTE dal prefab
 			if (_timerText != null)
 			{
-				_timerText.color = WelcomeData.WELCOME_TEXT_COLOR;
+				Debug.Log($"[WELCOME SCREEN] ✅ TimerText: '{_timerText.text}' (dal prefab)");
 			}
 
-			// Configura progress slider
+			// Progress Slider: SOLO configurazione valori, mantieni stile da prefab
 			if (_progressSlider != null)
 			{
-				_progressSlider.value = 0f;
+				_progressSlider.minValue = 0f;
 				_progressSlider.maxValue = WelcomeData.WELCOME_SCREEN_DURATION;
+				_progressSlider.value = 0f;
+				_progressSlider.interactable = false;
+				Debug.Log("[WELCOME SCREEN] ✅ ProgressSlider configurato");
 			}
-
-			Debug.Log("[WELCOME SCREEN] ✅ UI iniziale configurata");
 		}
 
 		/// <summary>
@@ -207,20 +283,21 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Fade in del logo
+		/// Fade in del logo - VERSIONE SEMPLIFICATA senza curve
 		/// </summary>
 		private IEnumerator FadeInLogo()
 		{
 			if (_audiLogo == null) yield break;
 
-			float duration = WelcomeData.LOGO_FADE_IN_DURATION;
+			float duration = 1.0f; // Durata fissa
 			float elapsedTime = 0f;
 			Color originalColor = _audiLogo.color;
 
 			while (elapsedTime < duration)
 			{
 				elapsedTime += Time.deltaTime;
-				float t = WelcomeData.LOGO_FADE_IN_CURVE.Evaluate(elapsedTime / duration);
+				// Usa curva smooth step
+				float t = Mathf.SmoothStep(0f, 1f, elapsedTime / duration);
 
 				Color newColor = originalColor;
 				newColor.a = Mathf.Lerp(0f, 1f, t);
@@ -235,22 +312,25 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Singola pulsazione del logo
+		/// Singola pulsazione del logo - VERSIONE SEMPLIFICATA
 		/// </summary>
 		private IEnumerator PulseLogo()
 		{
 			if (_audiLogo == null) yield break;
 
-			float duration = WelcomeData.LOGO_PULSE_DURATION;
+			float duration = 1.5f; // Durata fissa
 			float elapsedTime = 0f;
 			Vector3 originalScale = Vector3.one;
 
 			while (elapsedTime < duration)
 			{
 				elapsedTime += Time.deltaTime;
-				float t = WelcomeData.LOGO_PULSE_CURVE.Evaluate(elapsedTime / duration);
+				// Curva semplice sin wave per pulsazione
+				float t = Mathf.Sin((elapsedTime / duration) * Mathf.PI);
 
-				float scale = Mathf.Lerp(WelcomeData.LOGO_PULSE_MIN_SCALE, WelcomeData.LOGO_PULSE_MAX_SCALE, t);
+				float minScale = 1.0f;
+				float maxScale = 1.1f;
+				float scale = Mathf.Lerp(minScale, maxScale, t);
 				_audiLogo.transform.localScale = originalScale * scale;
 
 				yield return null;
@@ -260,20 +340,20 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Fade out del logo
+		/// Fade out del logo - VERSIONE SEMPLIFICATA
 		/// </summary>
 		private IEnumerator FadeOutLogo()
 		{
 			if (_audiLogo == null) yield break;
 
-			float duration = WelcomeData.LOGO_FADE_OUT_DURATION;
+			float duration = 0.8f; // Durata fissa
 			float elapsedTime = 0f;
 			Color originalColor = _audiLogo.color;
 
 			while (elapsedTime < duration)
 			{
 				elapsedTime += Time.deltaTime;
-				float t = WelcomeData.LOGO_FADE_OUT_CURVE.Evaluate(elapsedTime / duration);
+				float t = elapsedTime / duration; // Lineare
 
 				Color newColor = originalColor;
 				newColor.a = Mathf.Lerp(1f, 0f, t);
@@ -313,20 +393,13 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Aggiorna il display del timer
+		/// Aggiorna SOLO la progress bar (NON modifica i testi)
 		/// </summary>
-		private void UpdateTimerDisplay()
+		private void UpdateProgressSlider()
 		{
 			if (!_isWelcomeActive) return;
 
-			// Aggiorna timer text
-			if (_timerText != null)
-			{
-				float remainingTime = WelcomeData.WELCOME_SCREEN_DURATION - _welcomeTimer;
-				_timerText.text = $"Starting in {remainingTime:F1}s";
-			}
-
-			// Aggiorna progress slider
+			// Aggiorna SOLO progress slider (i testi rimangono dal prefab)
 			if (_progressSlider != null)
 			{
 				_progressSlider.value = _welcomeTimer;
@@ -344,19 +417,18 @@ namespace ClusterAudiFeatures
 		{
 			if (_isTransitioning) return;
 
+			Debug.Log("[WELCOME SCREEN] 🔄 Transizione a Comfort Mode");
+
+			// Stoppa coroutine prima di transizionare
+			StopAllWelcomeCoroutines();
+
 			_isTransitioning = true;
 			_isWelcomeActive = false;
 
-			Debug.Log("[WELCOME SCREEN] 🔄 Transizione a Comfort Mode");
-
-			// Broadcast evento transizione (per ora placeholder)
+			// Broadcast evento transizione
 			_broadcaster.Broadcast(new WelcomeTransitionEvent(WelcomeData.COMFORT_MODE_STATE));
 
-			// TODO: Quando avremo State Machine attiva, useremo:
-			// var stateMachine = GetStateMachine();
-			// stateMachine.GoTo(WelcomeData.COMFORT_MODE_STATE);
-
-			// Per ora, distruggi questo GameObject dopo fade out
+			// Fade out normale per transizione automatica
 			StartCoroutine(DestroyAfterFadeOut());
 		}
 
@@ -391,30 +463,13 @@ namespace ClusterAudiFeatures
 		#region Debug Input
 
 		/// <summary>
-		/// Gestisce input debug per testing
+		/// Gestisce input debug per testing - SOLO ESC PERMESSO
 		/// </summary>
 		private void HandleDebugInput()
 		{
-			if (!_isWelcomeActive) return;
+			if (!_isWelcomeActive || _isTransitioning) return;
 
-			// F1-F3: Transizione diretta alle modalità
-			if (Input.GetKeyDown(WelcomeData.DEBUG_ECO_MODE_KEY))
-			{
-				Debug.Log("[WELCOME SCREEN] 🟢 Debug: Transizione a Eco Mode");
-				TransitionToMode(WelcomeData.ECO_MODE_STATE);
-			}
-			else if (Input.GetKeyDown(WelcomeData.DEBUG_COMFORT_MODE_KEY))
-			{
-				Debug.Log("[WELCOME SCREEN] 🔵 Debug: Transizione a Comfort Mode");
-				TransitionToMode(WelcomeData.COMFORT_MODE_STATE);
-			}
-			else if (Input.GetKeyDown(WelcomeData.DEBUG_SPORT_MODE_KEY))
-			{
-				Debug.Log("[WELCOME SCREEN] 🔴 Debug: Transizione a Sport Mode");
-				TransitionToMode(WelcomeData.SPORT_MODE_STATE);
-			}
-
-			// ESCAPE: Skip welcome immediato
+			// SOLO ESCAPE: Skip welcome immediato
 			if (Input.GetKeyDown(KeyCode.Escape))
 			{
 				Debug.Log("[WELCOME SCREEN] ⏭️ Skip Welcome Screen");
@@ -423,25 +478,25 @@ namespace ClusterAudiFeatures
 		}
 
 		/// <summary>
-		/// Transizione debug a modalità specifica
+		/// Stoppa tutte le coroutine del Welcome Screen
 		/// </summary>
-		private void TransitionToMode(string targetMode)
+		private void StopAllWelcomeCoroutines()
 		{
-			if (_isTransitioning) return;
+			// Stoppa animazione logo se attiva
+			if (_logoAnimationCoroutine != null)
+			{
+				StopCoroutine(_logoAnimationCoroutine);
+				_logoAnimationCoroutine = null;
+			}
 
-			_isTransitioning = true;
-			_isWelcomeActive = false;
+			// Stoppa timer welcome se attivo
+			if (_welcomeTimerCoroutine != null)
+			{
+				StopCoroutine(_welcomeTimerCoroutine);
+				_welcomeTimerCoroutine = null;
+			}
 
-			Debug.Log($"[WELCOME SCREEN] 🔄 Transizione debug a {targetMode}");
-
-			// Broadcast evento transizione
-			_broadcaster.Broadcast(new WelcomeTransitionEvent(targetMode));
-
-			// TODO: Quando avremo State Machine attiva:
-			// var stateMachine = GetStateMachine();
-			// stateMachine.GoTo(targetMode);
-
-			StartCoroutine(DestroyAfterFadeOut());
+			Debug.Log("[WELCOME SCREEN] 🛑 Tutte le coroutine Welcome stoppate");
 		}
 
 		#endregion

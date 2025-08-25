@@ -19,6 +19,9 @@ namespace ClusterAudiFeatures
 		// Asset Audio Welcome
 		public const string WELCOME_STARTUP_SOUND_PATH = "Cluster/Audio/WelcomeStartup";
 
+		/// Percorso del prefab Welcome Screen nei Resources
+		public const string WELCOME_SCREEN_PREFAB_PATH = "WelcomeScreen/WelcomeScreenPrefab";
+
 		#endregion
 
 		#region State Machine States
@@ -56,6 +59,7 @@ namespace ClusterAudiFeatures
 		public static readonly UnityEngine.Color WELCOME_BACKGROUND_COLOR = new(0.1f, 0.1f, 0.1f, 1f);
 		public static readonly UnityEngine.Color WELCOME_TEXT_COLOR = new(1f, 1f, 1f, 0.9f);
 		public static readonly UnityEngine.Color AUDI_LOGO_COLOR = new(1f, 1f, 1f, 1f);
+		public static readonly UnityEngine.Color PROGRESS_BAR_COLOR = new (0.8f, 0.1f, 0.1f, 1f);
 
 		#endregion
 

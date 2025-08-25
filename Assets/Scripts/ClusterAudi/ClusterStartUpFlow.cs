@@ -12,7 +12,7 @@ namespace ClusterAudi
 	{
 		public void BeginStartUp(Client client)
 		{
-			Debug.Log("[CLUSTER STARTUP] ?? Inizio procedura di avvio cluster...");
+			Debug.Log("[CLUSTER STARTUP] 🚀 Inizio procedura di avvio cluster...");
 			StartUpFlowTask(client);
 		}
 
@@ -20,13 +20,13 @@ namespace ClusterAudi
 		{
 			try
 			{
-				Debug.Log("[CLUSTER STARTUP] ?? Esecuzione flusso di avvio asincrono...");
+				Debug.Log("[CLUSTER STARTUP] 🔄 Esecuzione flusso di avvio asincrono...");
 
 				// 1. Ottieni servizi necessari
 				IBroadcaster clientBroadcaster = client.Services.Get<IBroadcaster>();
 				IVehicleDataService vehicleDataService = client.Services.Get<IVehicleDataService>();
 
-				Debug.Log("[CLUSTER STARTUP] ? Servizi ottenuti con successo");
+				Debug.Log("[CLUSTER STARTUP] ✅ Servizi ottenuti con successo");
 
 				// 2. Configura servizio dati veicolo con valori iniziali
 				await InitializeVehicleData(vehicleDataService);
@@ -43,11 +43,11 @@ namespace ClusterAudi
 				// 6. Segnala completamento avvio
 				clientBroadcaster.Broadcast(new ClusterStartupCompletedEvent());
 
-				Debug.Log("[CLUSTER STARTUP] ?? Avvio cluster completato con successo!");
+				Debug.Log("[CLUSTER STARTUP] 🎉 Avvio cluster completato con successo!");
 			}
 			catch (System.Exception ex)
 			{
-				Debug.LogError($"[CLUSTER STARTUP] ? Errore durante avvio: {ex.Message}");
+				Debug.LogError($"[CLUSTER STARTUP] ❌ Errore durante avvio: {ex.Message}");
 				Debug.LogException(ex);
 			}
 		}
@@ -56,7 +56,7 @@ namespace ClusterAudi
 
 		private async Task InitializeVehicleData(IVehicleDataService vehicleDataService)
 		{
-			Debug.Log("[CLUSTER STARTUP] ?? Inizializzazione dati veicolo...");
+			Debug.Log("[CLUSTER STARTUP] 🚗 Inizializzazione dati veicolo...");
 
 			// Simula caricamento dati (in un'app reale potrebbe leggere da CAN bus, ecc.)
 			await Task.Delay(500); // Simula tempo di caricamento
@@ -68,12 +68,12 @@ namespace ClusterAudi
 			vehicleDataService.SetGear(0); // Parcheggio
 			vehicleDataService.SetDriveMode(DriveMode.Comfort); // Modalità default
 
-			Debug.Log("[CLUSTER STARTUP] ? Dati veicolo inizializzati");
+			Debug.Log("[CLUSTER STARTUP] ✅ Dati veicolo inizializzati");
 		}
 
 		private void SubscribeToVehicleEvents(IVehicleDataService vehicleDataService)
 		{
-			Debug.Log("[CLUSTER STARTUP] ?? Sottoscrizione eventi veicolo...");
+			Debug.Log("[CLUSTER STARTUP] 📡 Sottoscrizione eventi veicolo...");
 
 			// Sottoscrivi agli eventi per logging/debug
 			vehicleDataService.OnSpeedChanged += OnSpeedChanged;
@@ -81,7 +81,7 @@ namespace ClusterAudi
 			vehicleDataService.OnGearChanged += OnGearChanged;
 			vehicleDataService.OnDriveModeChanged += OnDriveModeChanged;
 
-			Debug.Log("[CLUSTER STARTUP] ? Eventi veicolo sottoscritti");
+			Debug.Log("[CLUSTER STARTUP] ✅ Eventi veicolo sottoscritti");
 		}
 
 		private async Task InitializeStateMachine(Client client, IBroadcaster broadcaster)
@@ -102,16 +102,22 @@ namespace ClusterAudi
 
 			// REGISTRA TUTTI GLI STATI - Seguendo pattern Mercedes
 			Debug.Log("[CLUSTER STARTUP] 📝 Registrazione stati...");
-			stateMachine.AddState(WelcomeData.WELCOME_STATE, new WelcomeState(context));
-			stateMachine.AddState(WelcomeData.ECO_MODE_STATE, new EcoModeState(context));
-			stateMachine.AddState(WelcomeData.COMFORT_MODE_STATE, new ComfortModeState(context));
-			stateMachine.AddState(WelcomeData.SPORT_MODE_STATE, new SportModeState(context));
+			stateMachine.AddState("WelcomeState", new WelcomeState(context));
+			stateMachine.AddState("EcoModeState", new EcoModeState(context));
+			stateMachine.AddState("ComfortModeState", new ComfortModeState(context));
+			stateMachine.AddState("SportModeState", new SportModeState(context));
 
 			Debug.Log("[CLUSTER STARTUP] ✅ Stati registrati nella State Machine");
 
 			// AVVIA CON WELCOME STATE - Come nel progetto Mercedes
-			stateMachine.GoTo(WelcomeData.WELCOME_STATE);
+			stateMachine.GoTo("WelcomeState");
 			Debug.Log("[CLUSTER STARTUP] 🚀 State Machine avviata con WelcomeState");
+
+			// ⭐ NUOVO: Passa la State Machine al Client per Update
+			if (client is ClusterClient clusterClient)
+			{
+				clusterClient.SetStateMachine(stateMachine);
+			}
 
 			Debug.Log("[CLUSTER STARTUP] ✅ State Machine completamente attiva");
 		}
@@ -143,12 +149,12 @@ namespace ClusterAudi
 
 		private void OnSpeedChanged(float newSpeed)
 		{
-			Debug.Log($"[CLUSTER STARTUP] ?? Velocità cambiata: {newSpeed:F1} km/h");
+			Debug.Log($"[CLUSTER STARTUP] 🏎️ Velocità cambiata: {newSpeed:F1} km/h");
 		}
 
 		private void OnRPMChanged(float newRPM)
 		{
-			Debug.Log($"[CLUSTER STARTUP] ?? RPM cambiati: {newRPM:F0}");
+			Debug.Log($"[CLUSTER STARTUP] ⚙️ RPM cambiati: {newRPM:F0}");
 		}
 
 		private void OnGearChanged(int newGear)
@@ -159,12 +165,12 @@ namespace ClusterAudi
 				0 => "P",
 				_ => newGear.ToString()
 			};
-			Debug.Log($"[CLUSTER STARTUP] ?? Marcia cambiata: {gearDisplay}");
+			Debug.Log($"[CLUSTER STARTUP] 🔧 Marcia cambiata: {gearDisplay}");
 		}
 
 		private void OnDriveModeChanged(DriveMode newMode)
 		{
-			Debug.Log($"[CLUSTER STARTUP] ?? Modalità guida cambiata: {newMode}");
+			Debug.Log($"[CLUSTER STARTUP] 🏁 Modalità guida cambiata: {newMode}");
 		}
 
 		#endregion
