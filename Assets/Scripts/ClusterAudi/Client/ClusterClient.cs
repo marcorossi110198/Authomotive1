@@ -27,6 +27,9 @@ namespace ClusterAudi
 			// Registra WelcomeFeature
 			Features.Add<IWelcomeFeature>(new WelcomeFeature(this));
 
+			// ClusterDriveModeFeature
+			Features.Add<IClusterDriveModeFeature>(new ClusterDriveModeFeature(this));
+
 			Debug.Log("[CLUSTER CLIENT] ✅ Features inizializzate (placeholder per ora)");
 		}
 

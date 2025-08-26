@@ -1,5 +1,6 @@
 ﻿using ClusterAudi;
 using UnityEngine;
+using ClusterAudiFeatures;
 
 namespace ClusterAudiFeatures
 {
@@ -21,6 +22,10 @@ namespace ClusterAudiFeatures
 		{
 			_vehicleDataService = context.Client.Services.Get<IVehicleDataService>();
 			_broadcaster = context.Client.Services.Get<IBroadcaster>();
+
+			// Sottoscrizione evento UI Drive Mode (NUOVO)
+			// _broadcaster.Add<ClusterDriveModeStateTransitionRequest>(OnDriveModeUITransitionRequest);
+
 		}
 
 		public override void StateOnEnter()
@@ -52,6 +57,10 @@ namespace ClusterAudiFeatures
 
 			// Reset impostazioni comfort
 			ResetComfortSettings();
+
+			// Rimuovi sottoscrizione evento (NUOVO)
+			// _broadcaster.Remove<ClusterDriveModeStateTransitionRequest>(OnDriveModeUITransitionRequest);
+
 		}
 
 		public override void StateOnUpdate()
@@ -79,6 +88,22 @@ namespace ClusterAudiFeatures
 
 			_broadcaster.Broadcast(themeEvent);
 		}
+
+		// Handler per richieste dall'UI Drive Mode (NUOVO)
+		//private void OnDriveModeUITransitionRequest(ClusterDriveModeStateTransitionRequest request)
+		//{
+		//	Debug.Log($"[COMFORT MODE] 🎛️ UI Drive Mode richiede transizione: {request.TargetState}");
+
+		//	// Valida stato richiesto
+		//	if (ClusterDriveModeData.IsValidState(request.TargetState))
+		//	{
+		//		_context.ClusterStateMachine.GoTo(request.TargetState);
+		//	}
+		//	else
+		//	{
+		//		Debug.LogWarning($"[COMFORT MODE] ⚠️ Stato non valido richiesto da UI: {request.TargetState}");
+		//	}
+		//}
 
 		/// <summary>
 		/// Configura display bilanciato - mostra tutto ma senza sovraccarico

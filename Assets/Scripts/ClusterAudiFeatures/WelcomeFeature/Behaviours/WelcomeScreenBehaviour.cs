@@ -240,26 +240,31 @@ namespace ClusterAudiFeatures
 			// 1. Fade In Canvas
 			yield return StartCoroutine(FadeInCanvas());
 
-			// 2. Fade In Logo
+			// 2. Fade In Logo iniziale
 			yield return StartCoroutine(FadeInLogo());
 
-			// 3. Logo Pulse Loop (per la durata del timer)
-			float pulseStartTime = Time.time;
+			// 3. Logo Fade In/Out Loop (NUOVO - sostituisce pulse)
+			float loopStartTime = Time.time;
 			while (_isWelcomeActive && !_isTransitioning)
 			{
-				yield return StartCoroutine(PulseLogo());
+				// Fade In/Out rapido e graduale
+				yield return StartCoroutine(FadeLogoInOut());
+
+				// Pausa breve tra i cicli
+				yield return new WaitForSeconds(0.2f);
 
 				// Esci se è passato troppo tempo o se stiamo transitioning
-				if (Time.time - pulseStartTime > WelcomeData.WELCOME_SCREEN_DURATION)
+				if (Time.time - loopStartTime > WelcomeData.WELCOME_SCREEN_DURATION - 1f)
 					break;
 			}
 
-			// 4. Fade Out (se non già in transizione)
+			// 4. Fade Out finale (se non già in transizione)
 			if (!_isTransitioning)
 			{
 				yield return StartCoroutine(FadeOutLogo());
 			}
 		}
+
 
 		/// <summary>
 		/// Fade in del canvas principale
@@ -282,21 +287,20 @@ namespace ClusterAudiFeatures
 			_welcomeCanvasGroup.alpha = 1f;
 		}
 
-		/// <summary>
-		/// Fade in del logo - VERSIONE SEMPLIFICATA senza curve
+		/// Fade in del logo iniziale - INVARIATO (già perfetto)
 		/// </summary>
 		private IEnumerator FadeInLogo()
 		{
 			if (_audiLogo == null) yield break;
 
-			float duration = 1.0f; // Durata fissa
+			float duration = 1.0f;
 			float elapsedTime = 0f;
 			Color originalColor = _audiLogo.color;
 
 			while (elapsedTime < duration)
 			{
 				elapsedTime += Time.deltaTime;
-				// Usa curva smooth step
+				// Curve easing per smooth fade in
 				float t = Mathf.SmoothStep(0f, 1f, elapsedTime / duration);
 
 				Color newColor = originalColor;
@@ -311,49 +315,73 @@ namespace ClusterAudiFeatures
 			_audiLogo.color = finalColor;
 		}
 
-		/// <summary>
-		/// Singola pulsazione del logo - VERSIONE SEMPLIFICATA
+		// <summary>
+		/// NUOVA: Fade In/Out ciclico rapido del logo - sostituisce PulseLogo()
+		/// Effetto: Logo scompare e riappare gradualmente e velocemente
 		/// </summary>
-		private IEnumerator PulseLogo()
+		private IEnumerator FadeLogoInOut()
 		{
 			if (_audiLogo == null) yield break;
 
-			float duration = 1.5f; // Durata fissa
-			float elapsedTime = 0f;
-			Vector3 originalScale = Vector3.one;
+			Color originalColor = _audiLogo.color;
 
-			while (elapsedTime < duration)
+			// FASE 1: Fade Out rapido (0.4 secondi)
+			float fadeOutDuration = 1f;
+			float elapsedTime = 0f;
+
+			while (elapsedTime < fadeOutDuration)
 			{
 				elapsedTime += Time.deltaTime;
-				// Curva semplice sin wave per pulsazione
-				float t = Mathf.Sin((elapsedTime / duration) * Mathf.PI);
+				// Easing out per fade smooth
+				float t = EaseOut(elapsedTime / fadeOutDuration);
 
-				float minScale = 1.0f;
-				float maxScale = 1.1f;
-				float scale = Mathf.Lerp(minScale, maxScale, t);
-				_audiLogo.transform.localScale = originalScale * scale;
+				Color newColor = originalColor;
+				newColor.a = Mathf.Lerp(1f, 0.15f, t); // Non completamente trasparente
+				_audiLogo.color = newColor;
 
 				yield return null;
 			}
 
-			_audiLogo.transform.localScale = originalScale;
+			// FASE 2: Breve pausa al minimo alpha
+			yield return new WaitForSeconds(0.1f);
+
+			// FASE 3: Fade In rapido (0.4 secondi) 
+			float fadeInDuration = 0.4f;
+			elapsedTime = 0f;
+
+			while (elapsedTime < fadeInDuration)
+			{
+				elapsedTime += Time.deltaTime;
+				// Easing in per fade smooth
+				float t = EaseIn(elapsedTime / fadeInDuration);
+
+				Color newColor = originalColor;
+				newColor.a = Mathf.Lerp(0.15f, 1f, t);
+				_audiLogo.color = newColor;
+
+				yield return null;
+			}
+
+			// Ripristina colore originale
+			_audiLogo.color = originalColor;
 		}
 
 		/// <summary>
-		/// Fade out del logo - VERSIONE SEMPLIFICATA
+		/// Fade out finale del logo - MIGLIORATO con easing
 		/// </summary>
 		private IEnumerator FadeOutLogo()
 		{
 			if (_audiLogo == null) yield break;
 
-			float duration = 0.8f; // Durata fissa
+			float duration = 0.8f;
 			float elapsedTime = 0f;
 			Color originalColor = _audiLogo.color;
 
 			while (elapsedTime < duration)
 			{
 				elapsedTime += Time.deltaTime;
-				float t = elapsedTime / duration; // Lineare
+				// Easing out per smooth fade out finale
+				float t = EaseOut(elapsedTime / duration);
 
 				Color newColor = originalColor;
 				newColor.a = Mathf.Lerp(1f, 0f, t);
@@ -366,6 +394,7 @@ namespace ClusterAudiFeatures
 			finalColor.a = 0f;
 			_audiLogo.color = finalColor;
 		}
+
 
 		#endregion
 
@@ -500,6 +529,41 @@ namespace ClusterAudiFeatures
 		}
 
 		#endregion
+
+		#region Animation Easing Functions - NUOVE
+
+		/// <summary>
+		/// Funzione easing per smooth fade in
+		/// Crea un effetto più graduale all'inizio
+		/// </summary>
+		private float EaseIn(float t)
+		{
+			return t * t;
+		}
+
+		/// <summary>
+		/// Funzione easing per smooth fade out  
+		/// Crea un effetto più graduale alla fine
+		/// </summary>
+		private float EaseOut(float t)
+		{
+			return 1 - Mathf.Pow(1 - t, 2);
+		}
+
+		/// <summary>
+		/// Funzione easing per smooth fade in-out
+		/// Combinazione di ease in e ease out per effetto bilanciato
+		/// </summary>
+		private float EaseInOut(float t)
+		{
+			if (t < 0.5f)
+				return 2 * t * t;
+			else
+				return 1 - Mathf.Pow(-2 * t + 2, 2) / 2;
+		}
+
+		#endregion
+
 	}
 
 	#region Events

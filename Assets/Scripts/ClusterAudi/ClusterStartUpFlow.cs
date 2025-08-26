@@ -132,6 +132,10 @@ namespace ClusterAudi
 				var welcomeFeature = client.Features.Get<IWelcomeFeature>();
 				await welcomeFeature.InstantiateWelcomeFeature();
 
+				// ClusterDriveModeFeature
+				var clusterDriveModeFeature = client.Features.Get<IClusterDriveModeFeature>();
+				await clusterDriveModeFeature.InstantiateClusterDriveModeFeature();
+
 				Debug.Log("[CLUSTER STARTUP] ✅ WelcomeFeature istanziata");
 			}
 			catch (System.Exception ex)
