@@ -58,6 +58,10 @@ namespace ClusterAudiFeatures
 		[Tooltip("Display modalità corrente")]
 		[SerializeField] private TextMeshProUGUI _currentModeText;
 
+		[Header("BACKGROUND IMAGE - ASSIGN IN PREFAB")]
+		[Tooltip("Image component che mostra il background per la modalità corrente")]
+		[SerializeField] private Image _backgroundImage;
+
 		#endregion
 
 		#region Private Fields
@@ -71,6 +75,15 @@ namespace ClusterAudiFeatures
 
 		// Animazioni
 		private Coroutine _modeTransitionCoroutine;
+		private Coroutine _backgroundTransitionCoroutine;
+
+		// 🆕 CACHE TEXTURES - Ottimizzazione caricamento
+		private Sprite _ecoBackgroundSprite;
+		private Sprite _comfortBackgroundSprite;
+		private Sprite _sportBackgroundSprite;
+
+		// 🆕 STATO CARICAMENTO
+		private bool _backgroundResourcesLoaded = false;
 
 		#endregion
 
@@ -92,6 +105,8 @@ namespace ClusterAudiFeatures
 			ValidateUIComponents();
 			SubscribeToEvents();
 			SetupInitialUI();
+
+			LoadBackgroundResources();
 		}
 
 		/// <summary>
@@ -113,6 +128,9 @@ namespace ClusterAudiFeatures
 
 			// Applica immediatamente il tema per la modalità iniziale
 			ApplyModeTheme(initialMode);
+
+			ApplyBackgroundForMode(initialMode);
+
 		}
 
 		/// <summary>
@@ -138,6 +156,39 @@ namespace ClusterAudiFeatures
 			if (_modeTransitionCoroutine != null)
 			{
 				StopCoroutine(_modeTransitionCoroutine);
+			}
+
+			// Stop animazioni background
+			if (_backgroundTransitionCoroutine != null)
+			{
+				StopCoroutine(_backgroundTransitionCoroutine);
+			}
+
+			// 🆕 NUOVO: Stop animazioni background e cleanup overlay
+			if (_backgroundTransitionCoroutine != null)
+			{
+				StopCoroutine(_backgroundTransitionCoroutine);
+
+				// 🆕 Cleanup eventuali overlay rimasti
+				CleanupAnyRemainingOverlays();
+			}
+
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Cleanup di sicurezza per overlay rimasti
+		/// </summary>
+		private void CleanupAnyRemainingOverlays()
+		{
+			// Cerca overlay temporanei rimasti nella scena
+			GameObject[] overlays = GameObject.FindGameObjectsWithTag("Untagged");
+			foreach (var obj in overlays)
+			{
+				if (obj.name == "BackgroundOverlay_Temp")
+				{
+					Debug.Log("[CLUSTER DRIVE MODE] 🧹 Cleanup overlay rimasto");
+					Destroy(obj);
+				}
 			}
 		}
 
@@ -185,6 +236,22 @@ namespace ClusterAudiFeatures
 			{
 				Debug.LogError("[CLUSTER DRIVE MODE] ❌ _sportModeText non assegnato nel prefab!");
 				missingComponents++;
+			}
+
+			// Validazione background image
+			if (_backgroundImage == null)
+			{
+				Debug.LogError("[CLUSTER DRIVE MODE] ❌ _backgroundImage non assegnato nel prefab!");
+				missingComponents++;
+			}
+
+			if (missingComponents == 0)
+			{
+				Debug.Log("[CLUSTER DRIVE MODE] ✅ Tutti i SerializeField assegnati correttamente (incluso Background)");
+			}
+			else
+			{
+				Debug.LogError($"[CLUSTER DRIVE MODE] ❌ {missingComponents} componenti mancanti!");
 			}
 
 			// Validazione info veicolo
@@ -284,6 +351,311 @@ namespace ClusterAudiFeatures
 		}
 
 		#endregion
+
+		#region 🆕 NUOVO: Background Management
+
+		/// <summary>
+		/// 🆕 NUOVO: Carica tutte le risorse background da Resources
+		/// Ottimizzazione: Carica una sola volta all'avvio invece che a ogni cambio
+		/// </summary>
+		private void LoadBackgroundResources()
+		{
+			Debug.Log("[CLUSTER DRIVE MODE] 🖼️ Caricamento risorse background...");
+
+			try
+			{
+				// Carica sprites da Resources seguendo le tue convenzioni di naming
+				_ecoBackgroundSprite = Resources.Load<Sprite>(ClusterDriveModeData.ECO_BACKGROUND_PATH);
+				_comfortBackgroundSprite = Resources.Load<Sprite>(ClusterDriveModeData.COMFORT_BACKGROUND_PATH);
+				_sportBackgroundSprite = Resources.Load<Sprite>(ClusterDriveModeData.SPORT_BACKGROUND_PATH);
+
+				// Valida caricamento
+				int loadedSprites = 0;
+				if (_ecoBackgroundSprite != null) loadedSprites++;
+				if (_comfortBackgroundSprite != null) loadedSprites++;
+				if (_sportBackgroundSprite != null) loadedSprites++;
+
+				if (loadedSprites == 3)
+				{
+					_backgroundResourcesLoaded = true;
+					Debug.Log("[CLUSTER DRIVE MODE] ✅ Tutte le risorse background caricate con successo");
+				}
+				else
+				{
+					Debug.LogWarning($"[CLUSTER DRIVE MODE] ⚠️ Solo {loadedSprites}/3 background caricati. " +
+						"Verifica che le immagini siano in Resources/ClusterDriveMode/");
+					LogMissingBackgrounds();
+				}
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogError($"[CLUSTER DRIVE MODE] ❌ Errore caricamento background: {ex.Message}");
+				_backgroundResourcesLoaded = false;
+			}
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Log dettagliato per background mancanti
+		/// </summary>
+		private void LogMissingBackgrounds()
+		{
+			if (_ecoBackgroundSprite == null)
+				Debug.LogError("[CLUSTER DRIVE MODE] ❌ ClusterECO.png non trovato in Resources/ClusterDriveMode/");
+
+			if (_comfortBackgroundSprite == null)
+				Debug.LogError("[CLUSTER DRIVE MODE] ❌ ClusterCOMFORT.png non trovato in Resources/ClusterDriveMode/");
+
+			if (_sportBackgroundSprite == null)
+				Debug.LogError("[CLUSTER DRIVE MODE] ❌ ClusterSPORT.png non trovato in Resources/ClusterDriveMode/");
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Applica il background per la modalità specificata
+		/// Gestisce il cambio con animazione smooth se richiesto
+		/// </summary>
+		private void ApplyBackgroundForMode(DriveMode mode, bool animated = false)
+		{
+			if (_backgroundImage == null)
+			{
+				Debug.LogWarning("[CLUSTER DRIVE MODE] ⚠️ _backgroundImage non assegnato nel prefab!");
+				return;
+			}
+
+			if (!_backgroundResourcesLoaded)
+			{
+				Debug.LogWarning("[CLUSTER DRIVE MODE] ⚠️ Risorse background non caricate, skip aggiornamento");
+				return;
+			}
+
+			Debug.Log($"[CLUSTER DRIVE MODE] 🖼️ Applico background per modalità: {mode}");
+
+			// Determina quale sprite usare
+			Sprite newBackgroundSprite = mode switch
+			{
+				DriveMode.Eco => _ecoBackgroundSprite,
+				DriveMode.Comfort => _comfortBackgroundSprite,
+				DriveMode.Sport => _sportBackgroundSprite,
+				_ => _comfortBackgroundSprite // Default fallback
+			};
+
+			if (newBackgroundSprite == null)
+			{
+				Debug.LogError($"[CLUSTER DRIVE MODE] ❌ Background sprite per modalità {mode} è null!");
+				return;
+			}
+
+			// Applica il cambio
+			if (animated)
+			{
+				// Cambio animato (con fade)
+				StartLayeredBackgroundTransition(newBackgroundSprite);
+			}
+			else
+			{
+				// Cambio immediato
+				_backgroundImage.sprite = newBackgroundSprite;
+				Debug.Log($"[CLUSTER DRIVE MODE] ✅ Background cambiato immediatamente a: {newBackgroundSprite.name}");
+			}
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Avvia transizione layered con overlay temporaneo
+		/// </summary>
+		private void StartLayeredBackgroundTransition(Sprite newSprite)
+		{
+			// Stoppa animazione precedente se attiva
+			if (_backgroundTransitionCoroutine != null)
+			{
+				StopCoroutine(_backgroundTransitionCoroutine);
+			}
+
+			// Avvia nuova animazione layered
+			_backgroundTransitionCoroutine = StartCoroutine(AnimateLayeredBackgroundTransition(newSprite));
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Animazione layered background transition
+		/// EFFETTO: Nuovo background appare sopra sfumando → Vecchio background scompare dietro
+		/// </summary>
+		private IEnumerator AnimateLayeredBackgroundTransition(Sprite newSprite)
+		{
+			Debug.Log($"[CLUSTER DRIVE MODE] 🎬 Inizio layered background transition");
+
+			float transitionDuration = 0.4f; // Durata totale transizione
+
+			// 🆕 STEP 1: Crea Image temporanea per overlay
+			GameObject overlayObject = CreateTemporaryOverlay(newSprite);
+			if (overlayObject == null)
+			{
+				Debug.LogError("[CLUSTER DRIVE MODE] ❌ Impossibile creare overlay temporaneo");
+				yield break;
+			}
+
+			Image overlayImage = overlayObject.GetComponent<Image>();
+			Color overlayColor = overlayImage.color;
+
+			// 🆕 STEP 2: Overlay inizia trasparente
+			overlayColor.a = 0f;
+			overlayImage.color = overlayColor;
+
+			Debug.Log($"[CLUSTER DRIVE MODE] 📱 Overlay creato per: {newSprite.name}");
+
+			// 🆕 STEP 3: Fade IN dell'overlay (nuovo background appare sopra)
+			float elapsed = 0f;
+			while (elapsed < transitionDuration)
+			{
+				elapsed += Time.deltaTime;
+
+				// Smooth ease-in per apparizione graduale
+				float t = EaseInOut(elapsed / transitionDuration);
+
+				// Fade in overlay
+				overlayColor.a = Mathf.Lerp(0f, 1f, t);
+				overlayImage.color = overlayColor;
+
+				yield return null;
+			}
+
+			// 🆕 STEP 4: Overlay completamente opaco
+			overlayColor.a = 1f;
+			overlayImage.color = overlayColor;
+
+			Debug.Log($"[CLUSTER DRIVE MODE] ✅ Overlay fade-in completato");
+
+			// 🆕 STEP 5: Sostituisci background principale (ora invisibile dietro overlay)
+			_backgroundImage.sprite = newSprite;
+
+			Debug.Log($"[CLUSTER DRIVE MODE] 🔄 Background principale sostituito con: {newSprite.name}");
+
+			// 🆕 STEP 6: Rimuovi overlay (background principale ora visibile)
+			DestroyTemporaryOverlay(overlayObject);
+
+			Debug.Log($"[CLUSTER DRIVE MODE] ✅ Layered transition completata per: {newSprite.name}");
+			_backgroundTransitionCoroutine = null;
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Crea Image temporanea per effetto overlay
+		/// </summary>
+		private GameObject CreateTemporaryOverlay(Sprite sprite)
+		{
+			try
+			{
+				// Trova il parent Canvas del background
+				Canvas parentCanvas = _backgroundImage.GetComponentInParent<Canvas>();
+				if (parentCanvas == null)
+				{
+					Debug.LogError("[CLUSTER DRIVE MODE] ❌ Impossibile trovare parent Canvas");
+					return null;
+				}
+
+				// Crea GameObject overlay
+				GameObject overlayObject = new GameObject("BackgroundOverlay_Temp");
+				overlayObject.transform.SetParent(parentCanvas.transform, false);
+
+				// Aggiungi Image component
+				Image overlayImage = overlayObject.AddComponent<Image>();
+				overlayImage.sprite = sprite;
+				overlayImage.color = Color.white; // Alpha sarà controllata dall'animazione
+
+				// Configura RectTransform per coprire tutto
+				RectTransform overlayRect = overlayObject.GetComponent<RectTransform>();
+				RectTransform backgroundRect = _backgroundImage.GetComponent<RectTransform>();
+
+				// Copia esattamente posizione e dimensioni del background originale
+				overlayRect.anchorMin = backgroundRect.anchorMin;
+				overlayRect.anchorMax = backgroundRect.anchorMax;
+				overlayRect.anchoredPosition = backgroundRect.anchoredPosition;
+				overlayRect.sizeDelta = backgroundRect.sizeDelta;
+				overlayRect.localScale = backgroundRect.localScale;
+
+				// 🆕 IMPORTANTE: Posiziona SOPRA il background originale
+				overlayObject.transform.SetSiblingIndex(_backgroundImage.transform.GetSiblingIndex() + 1);
+
+				Debug.Log("[CLUSTER DRIVE MODE] ✅ Overlay temporaneo creato e posizionato");
+				return overlayObject;
+			}
+			catch (System.Exception ex)
+			{
+				Debug.LogError($"[CLUSTER DRIVE MODE] ❌ Errore creazione overlay: {ex.Message}");
+				return null;
+			}
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Rimuove overlay temporaneo
+		/// </summary>
+		private void DestroyTemporaryOverlay(GameObject overlayObject)
+		{
+			if (overlayObject != null)
+			{
+				Debug.Log("[CLUSTER DRIVE MODE] 🗑️ Rimozione overlay temporaneo");
+				Destroy(overlayObject);
+			}
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Easing function per transizione smooth
+		/// </summary>
+		private float EaseInOut(float t)
+		{
+			return t < 0.5f
+				? 2 * t * t
+				: 1 - Mathf.Pow(-2 * t + 2, 2) / 2;
+		}
+
+		/// <summary>
+		/// 🆕 NUOVO: Coroutine per animazione cambio background
+		/// Effetto: Fade out → Cambio sprite → Fade in
+		/// </summary>
+		private IEnumerator AnimateBackgroundTransition(Sprite newSprite)
+		{
+			Debug.Log($"[CLUSTER DRIVE MODE] 🎬 Inizio animazione background transition");
+
+			float transitionDuration = 0.3f; // Transizione veloce ma smooth
+			Color originalColor = _backgroundImage.color;
+
+			// FASE 1: Fade Out
+			float elapsed = 0f;
+			while (elapsed < transitionDuration)
+			{
+				elapsed += Time.deltaTime;
+				float alpha = Mathf.Lerp(1f, 0f, elapsed / transitionDuration);
+
+				Color fadeColor = originalColor;
+				fadeColor.a = alpha;
+				_backgroundImage.color = fadeColor;
+
+				yield return null;
+			}
+
+			// FASE 2: Cambio Sprite (quando invisibile)
+			_backgroundImage.sprite = newSprite;
+			Debug.Log($"[CLUSTER DRIVE MODE] 🔄 Background sprite cambiato a: {newSprite.name}");
+
+			// FASE 3: Fade In
+			elapsed = 0f;
+			while (elapsed < transitionDuration)
+			{
+				elapsed += Time.deltaTime;
+				float alpha = Mathf.Lerp(0f, 1f, elapsed / transitionDuration);
+
+				Color fadeColor = originalColor;
+				fadeColor.a = alpha;
+				_backgroundImage.color = fadeColor;
+
+				yield return null;
+			}
+
+			// Ripristina colore originale
+			_backgroundImage.color = originalColor;
+
+			Debug.Log($"[CLUSTER DRIVE MODE] ✅ Animazione background completata per: {newSprite.name}");
+			_backgroundTransitionCoroutine = null;
+		}
+
+		#endregion
+
 
 		#region Mode Display Methods
 
@@ -420,6 +792,9 @@ namespace ClusterAudiFeatures
 
 			// Aggiorna display modalità
 			UpdateModeDisplay(e.NewMode);
+
+			// Aggiorna background con animazione
+			ApplyBackgroundForMode(e.NewMode, animated: true);
 		}
 
 		/// <summary>
@@ -528,15 +903,15 @@ namespace ClusterAudiFeatures
 				_ => ClusterDriveModeData.COMFORT_COLOR
 			};
 
-			// Applica colore primario ai testi delle info veicolo
-			if (_speedText != null) _speedText.color = primaryColor;
-			if (_rpmText != null) _rpmText.color = primaryColor;
-			if (_gearText != null) _gearText.color = primaryColor;
-			if (_currentModeText != null)
-			{
-				_currentModeText.color = primaryColor;
-				_currentModeText.text = mode.ToString().ToUpper();
-			}
+			//// Applica colore primario ai testi delle info veicolo
+			//if (_speedText != null) _speedText.color = primaryColor;
+			//if (_rpmText != null) _rpmText.color = primaryColor;
+			//if (_gearText != null) _gearText.color = primaryColor;
+			//if (_currentModeText != null)
+			//{
+			//	_currentModeText.color = primaryColor;
+			//	_currentModeText.text = mode.ToString().ToUpper();
+			//}
 
 			Debug.Log($"[CLUSTER DRIVE MODE] ✅ Tema applicato per modalità: {mode}");
 		}
@@ -551,12 +926,12 @@ namespace ClusterAudiFeatures
 				_currentModeText.color = themeEvent.PrimaryColor;
 
 			// Applica colore secondario se disponibile
-			if (themeEvent.SecondaryColor != Color.clear)
-			{
-				if (_speedText != null) _speedText.color = themeEvent.SecondaryColor;
-				if (_rpmText != null) _rpmText.color = themeEvent.SecondaryColor;
-				if (_gearText != null) _gearText.color = themeEvent.SecondaryColor;
-			}
+			//if (themeEvent.SecondaryColor != Color.clear)
+			//{
+			//	if (_speedText != null) _speedText.color = themeEvent.SecondaryColor;
+			//	if (_rpmText != null) _rpmText.color = themeEvent.SecondaryColor;
+			//	if (_gearText != null) _gearText.color = themeEvent.SecondaryColor;
+			//}
 		}
 
 		/// <summary>

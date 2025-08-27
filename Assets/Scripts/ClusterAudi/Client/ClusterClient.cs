@@ -24,11 +24,20 @@ namespace ClusterAudi
 			// TODO: Aggiungere features quando le implementiamo:
 			// Features.Add<IDriveModeFeature>(new DriveModeFeature(this));
 
-			// Registra WelcomeFeature
+			// WelcomeFeature
 			Features.Add<IWelcomeFeature>(new WelcomeFeature(this));
 
 			// ClusterDriveModeFeature
 			Features.Add<IClusterDriveModeFeature>(new ClusterDriveModeFeature(this));
+
+			// Registra SpeedometerFeature
+			Features.Add<ISpeedometerFeature>(new SpeedometerFeature(this));
+
+			// AutomaticGearboxFeature
+			Features.Add<IAutomaticGearboxFeature>(new AutomaticGearboxFeature(this));
+
+			// SeatBeltFeature
+			Features.Add<ISeatBeltFeature>(new SeatBeltFeature(this));
 
 			Debug.Log("[CLUSTER CLIENT] ✅ Features inizializzate (placeholder per ora)");
 		}

@@ -136,6 +136,18 @@ namespace ClusterAudi
 				var clusterDriveModeFeature = client.Features.Get<IClusterDriveModeFeature>();
 				await clusterDriveModeFeature.InstantiateClusterDriveModeFeature();
 
+				// Carica SpeedometerFeature
+				var speedometerFeature = client.Features.Get<ISpeedometerFeature>();
+				await speedometerFeature.InstantiateSpeedometerFeature();
+
+				// AutomaticGearboxFeature
+				var automaticgearboxFeature = client.Features.Get<IAutomaticGearboxFeature>();
+				await automaticgearboxFeature.InstantiateAutomaticGearboxFeature();
+
+				// Istanzia SeatBeltFeature
+				var seatBeltFeature = client.Features.Get<ISeatBeltFeature>();
+				await seatBeltFeature.InstantiateSeatBeltFeature();
+
 				Debug.Log("[CLUSTER STARTUP] ✅ WelcomeFeature istanziata");
 			}
 			catch (System.Exception ex)

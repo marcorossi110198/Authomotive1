@@ -58,6 +58,14 @@ namespace ClusterAudi
 		void SetThrottlePosition(float throttle);
 		void SetBrakeForce(float brake);
 
+		// metodi per controlli tachimetro
+
+		bool IsInRedZone();
+		float GetRedZoneThreshold();
+		float GetOptimalShiftPointRPM();
+		bool ShouldShiftUp();
+		bool ShouldShiftDown();
+
 		#endregion
 	}
 }

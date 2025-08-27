@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace ClusterAudiFeatures
 {
@@ -29,6 +29,25 @@ namespace ClusterAudiFeatures
 
 		#endregion
 
+		#region BACKGROUND RESOURCES PATHS
+
+		/// <summary>
+		/// Path delle risorse background per le modalità
+		/// </summary>
+		public const string ECO_BACKGROUND_PATH = "ClusterDriveMode/img/ClusterECO";
+		public const string COMFORT_BACKGROUND_PATH = "ClusterDriveMode/img/ClusterCOMFORT";
+		public const string SPORT_BACKGROUND_PATH = "ClusterDriveMode/img/ClusterSPORT";
+
+		/// <summary>
+		/// Nome file delle immagini background
+		/// Per riferimento quando crei le immagini
+		/// </summary>
+		public const string ECO_BACKGROUND_FILENAME = "ClusterECO.png";
+		public const string COMFORT_BACKGROUND_FILENAME = "ClusterCOMFORT.png";
+		public const string SPORT_BACKGROUND_FILENAME = "ClusterSPORT.png";
+
+		#endregion
+
 		#region Debug Keys - IDENTICO Mercedes Pattern
 
 		/// <summary>
@@ -49,6 +68,7 @@ namespace ClusterAudiFeatures
 		public const float MODE_INDICATOR_SIZE = 80f;
 		public const float MODE_INDICATOR_SPACING = 100f;
 		public const float ANIMATION_DURATION = 0.3f;
+		public const float BACKGROUND_TRANSITION_DURATION = 0.3f;
 
 		// Posizioni UI (Screen Space)
 		public static readonly Vector2 MODE_INDICATORS_POSITION = new Vector2(100, -100);
@@ -59,7 +79,7 @@ namespace ClusterAudiFeatures
 		#region Audi Brand Colors
 
 		/// <summary>
-		/// Palette colori Audi per modalit� guida
+		/// Palette colori Audi per modalità guida
 		/// </summary>
 		public static readonly Color ECO_COLOR = new Color(0.2f, 0.8f, 0.2f, 1f);        // Verde Eco
 		public static readonly Color COMFORT_COLOR = new Color(0.2f, 0.5f, 0.8f, 1f);    // Blu Comfort  
@@ -72,7 +92,7 @@ namespace ClusterAudiFeatures
 		#region UI Text Labels
 
 		/// <summary>
-		/// Etichette testo per modalit�
+		/// Etichette testo per modalità
 		/// </summary>
 		public const string ECO_MODE_TEXT = "ECO";
 		public const string COMFORT_MODE_TEXT = "COMFORT";
@@ -83,7 +103,7 @@ namespace ClusterAudiFeatures
 		#region Validation Helper
 
 		/// <summary>
-		/// Verifica se uno stato � valido - IDENTICO al pattern Mercedes
+		/// Verifica se uno stato è valido - IDENTICO al pattern Mercedes
 		/// </summary>
 		public static bool IsValidState(string stateName)
 		{
@@ -91,6 +111,67 @@ namespace ClusterAudiFeatures
 				   stateName == COMFORT_MODE_STATE ||
 				   stateName == SPORT_MODE_STATE ||
 				   stateName == WELCOME_STATE;
+		}
+
+		#endregion
+
+		#region Background Utilities
+
+		/// <summary>
+		/// Ottieni path background per modalità
+		/// </summary>
+		public static string GetBackgroundPath(ClusterAudi.DriveMode mode)
+		{
+			return mode switch
+			{
+				ClusterAudi.DriveMode.Eco => ECO_BACKGROUND_PATH,
+				ClusterAudi.DriveMode.Comfort => COMFORT_BACKGROUND_PATH,
+				ClusterAudi.DriveMode.Sport => SPORT_BACKGROUND_PATH,
+				_ => COMFORT_BACKGROUND_PATH // Default
+			};
+		}
+
+		/// <summary>
+		/// Ottieni nome file background per modalità
+		/// </summary>
+		public static string GetBackgroundFilename(ClusterAudi.DriveMode mode)
+		{
+			return mode switch
+			{
+				ClusterAudi.DriveMode.Eco => ECO_BACKGROUND_FILENAME,
+				ClusterAudi.DriveMode.Comfort => COMFORT_BACKGROUND_FILENAME,
+				ClusterAudi.DriveMode.Sport => SPORT_BACKGROUND_FILENAME,
+				_ => COMFORT_BACKGROUND_FILENAME // Default
+			};
+		}
+
+		/// <summary>
+		/// Verifica che tutti i background siano disponibili
+		/// Utility per debug e validazione
+		/// </summary>
+		public static bool ValidateBackgroundResources()
+		{
+			var ecoSprite = Resources.Load<Sprite>(ECO_BACKGROUND_PATH);
+			var comfortSprite = Resources.Load<Sprite>(COMFORT_BACKGROUND_PATH);
+			var sportSprite = Resources.Load<Sprite>(SPORT_BACKGROUND_PATH);
+
+			bool allLoaded = ecoSprite != null && comfortSprite != null && sportSprite != null;
+
+			if (!allLoaded)
+			{
+				Debug.LogWarning("[CLUSTER DRIVE MODE DATA] ⚠️ Alcuni background non disponibili in img/");
+				if (ecoSprite == null) Debug.LogError($"❌ Manca: {ECO_BACKGROUND_PATH}");
+				if (comfortSprite == null) Debug.LogError($"❌ Manca: {COMFORT_BACKGROUND_PATH}");
+				if (sportSprite == null) Debug.LogError($"❌ Manca: {SPORT_BACKGROUND_PATH}");
+
+				Debug.LogError("🔍 Verifica struttura: Resources/ClusterDriveMode/img/ClusterXXX.png");
+			}
+			else
+			{
+				Debug.Log("[CLUSTER DRIVE MODE DATA] ✅ Tutti i background disponibili in img/");
+			}
+
+			return allLoaded;
 		}
 
 		#endregion
