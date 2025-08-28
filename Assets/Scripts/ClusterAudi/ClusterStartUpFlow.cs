@@ -152,6 +152,14 @@ namespace ClusterAudi
 				var seatBeltFeature = client.Features.Get<ISeatBeltFeature>();
 				await seatBeltFeature.InstantiateSeatBeltFeature();
 
+				// Istanzia ClockFeature
+				var clockFeature = client.Features.Get<IClockFeature>();
+				await clockFeature.InstantiateClockFeature();
+
+				// Istanzia DoorLockFeature
+				var doorLockFeature = client.Features.Get<IDoorLockFeature>();
+				await doorLockFeature.InstantiateDoorLockFeature();
+
 				Debug.Log("[CLUSTER STARTUP] ✅ WelcomeFeature istanziata");
 			}
 			catch (System.Exception ex)

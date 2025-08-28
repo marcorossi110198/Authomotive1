@@ -42,6 +42,12 @@ namespace ClusterAudi
 			// SeatBeltFeature
 			Features.Add<ISeatBeltFeature>(new SeatBeltFeature(this));
 
+			// ClockFeature
+			Features.Add<IClockFeature>(new ClockFeature(this));
+
+			// DoorLockFeature
+			Features.Add<IDoorLockFeature>(new DoorLockFeature(this));
+
 			Debug.Log("[CLUSTER CLIENT] ✅ Features inizializzate (placeholder per ora)");
 		}
 

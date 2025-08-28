@@ -88,9 +88,9 @@ namespace ClusterAudiFeatures
 		/// <summary>
 		/// Path audio files per warning cinture
 		/// </summary>
-		public const string SOFT_BEEP_AUDIO_PATH = "Audio/SFX/SeatBelt/SoftBeep";
-		public const string URGENT_BEEP_AUDIO_PATH = "Audio/SFX/SeatBelt/UrgentBeep";
-		public const string CONTINUOUS_BEEP_AUDIO_PATH = "Audio/SFX/SeatBelt/ContinuousBeep";
+		public const string SOFT_BEEP_AUDIO_PATH = AudioData.SEATBELT_SOFT_BEEP_PATH;
+		public const string URGENT_BEEP_AUDIO_PATH = AudioData.SEATBELT_URGENT_BEEP_PATH;
+		public const string CONTINUOUS_BEEP_AUDIO_PATH = AudioData.SEATBELT_CONTINUOUS_BEEP_PATH;
 
 		/// <summary>
 		/// Timing per escalation audio warning

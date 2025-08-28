@@ -47,6 +47,9 @@ namespace ClusterAudiFeatures
 			// Sottoscrivi agli eventi audio SeatBelt
 			var broadcaster = client.Services.Get<IBroadcaster>();
 			broadcaster.Add<PlaySeatBeltAudioEvent>(OnPlaySeatBeltAudio);
+
+			// Sottoscrivi agli eventi audio DoorLock
+			broadcaster.Add<DoorLockAudioRequestEvent>(OnPlayDoorLockAudio);
 		}
 
 		#endregion
@@ -144,6 +147,16 @@ namespace ClusterAudiFeatures
 			PlayAudioClip(e.AudioClipPath, e.Volume, e.Priority);
 		}
 
+		/// <summary>
+		/// Gestisce eventi DoorLock audio
+		/// </summary>
+		private void OnPlayDoorLockAudio(DoorLockAudioRequestEvent e)
+		{
+			Debug.Log($"[AUDIO FEATURE] 🔒 Richiesta audio DoorLock: {e.AudioPath}");
+
+			PlayAudioClip(e.AudioPath, e.Volume, e.Priority);
+		}
+
 		#endregion
 
 		#region Fallback Creation
@@ -183,6 +196,7 @@ namespace ClusterAudiFeatures
 			if (_broadcaster != null)
 			{
 				_broadcaster.Remove<PlaySeatBeltAudioEvent>(OnPlaySeatBeltAudio);
+				_broadcaster.Remove<DoorLockAudioRequestEvent>(OnPlayDoorLockAudio);
 			}
 		}
 
