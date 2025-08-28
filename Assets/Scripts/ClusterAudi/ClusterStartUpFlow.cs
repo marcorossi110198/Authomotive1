@@ -128,6 +128,10 @@ namespace ClusterAudi
 
 			try
 			{
+				// Istanzia AudioFeature
+				var audioFeature = client.Features.Get<IAudioFeature>();
+				await audioFeature.InstantiateAudioFeature();
+
 				// Istanzia WelcomeFeature
 				var welcomeFeature = client.Features.Get<IWelcomeFeature>();
 				await welcomeFeature.InstantiateWelcomeFeature();

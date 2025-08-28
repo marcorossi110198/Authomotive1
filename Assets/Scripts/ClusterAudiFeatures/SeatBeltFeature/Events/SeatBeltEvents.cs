@@ -1,10 +1,11 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 namespace ClusterAudiFeatures
 {
 	/// <summary>
 	/// Eventi per SeatBelt Feature
 	/// IDENTICO al pattern eventi Mercedes per comunicazione event-driven
+	/// VERSIONE AGGIORNATA: Con nuovo StopSeatBeltAudioEvent
 	/// </summary>
 
 	#region Core SeatBelt Events
@@ -77,7 +78,7 @@ namespace ClusterAudiFeatures
 	public enum SeatBeltWarningStopReason
 	{
 		AllBeltsFastened,    // Tutte le cinture allacciate
-		SpeedReduced,        // Velocit� sotto soglia
+		SpeedReduced,        // Velocità sotto soglia
 		SystemDisabled,      // Sistema disabilitato
 		ManualDismiss        // Dismisso manualmente
 	}
@@ -110,7 +111,7 @@ namespace ClusterAudiFeatures
 	}
 
 	/// <summary>
-	/// Evento richiesta riproduzione audio
+	/// Evento richiesta riproduzione audio SeatBelt
 	/// </summary>
 	public class PlaySeatBeltAudioEvent
 	{
@@ -118,6 +119,7 @@ namespace ClusterAudiFeatures
 		public float Volume { get; }
 		public int Priority { get; }
 		public AudioEscalationLevel EscalationLevel { get; }
+		public System.DateTime Timestamp { get; }
 
 		public PlaySeatBeltAudioEvent(
 			string audioClipPath,
@@ -129,6 +131,23 @@ namespace ClusterAudiFeatures
 			Volume = volume;
 			Priority = priority;
 			EscalationLevel = escalationLevel;
+			Timestamp = System.DateTime.Now;
+		}
+	}
+
+	/// <summary>
+	/// 🆕 NUOVO: Evento per fermare audio SeatBelt
+	/// Utilizzato quando il warning si ferma per interrompere audio continuo
+	/// </summary>
+	public class StopSeatBeltAudioEvent
+	{
+		public System.DateTime Timestamp { get; }
+		public string Reason { get; }
+
+		public StopSeatBeltAudioEvent(string reason = "Warning stopped")
+		{
+			Timestamp = System.DateTime.Now;
+			Reason = reason;
 		}
 	}
 
@@ -260,7 +279,13 @@ namespace ClusterAudiFeatures
 	#region Development Notes
 
 	/*
-     * SEATBELT EVENTS - SISTEMA COMPLETO
+     * SEATBELT EVENTS - SISTEMA COMPLETO AGGIORNATO
+     * 
+     * VERSIONE 2.0 - AGGIORNAMENTI:
+     * ✅ Aggiunto StopSeatBeltAudioEvent per fermare audio continuo
+     * ✅ Aggiornato PlaySeatBeltAudioEvent con timestamp
+     * ✅ Migliorato AudioEscalationLevel enum condiviso
+     * ✅ Documentazione completa per ogni evento
      * 
      * Pattern seguito IDENTICO a Mercedes per event-driven architecture:
      * 
@@ -272,25 +297,30 @@ namespace ClusterAudiFeatures
      * AUDIO EVENTS:
      * - SeatBeltAudioEscalationEvent: Escalation audio levels
      * - PlaySeatBeltAudioEvent: Richiesta riproduzione audio
+     * - StopSeatBeltAudioEvent: 🆕 Ferma audio continuo
      * 
      * VISUAL EVENTS:
      * - SeatBeltVisualWarningEvent: Aggiornamenti visual warning
      * - SeatBeltFlashIconsEvent: Controllo flash icone
      * 
      * CONFIGURATION EVENTS:
-     * - SeatBeltConfigurationUpdatedEvent: Cambio config per modalit�
+     * - SeatBeltConfigurationUpdatedEvent: Cambio config per modalità
      * - SeatBeltSystemEnabledEvent: Enable/disable sistema
      * 
      * DEBUG EVENTS:
      * - SeatBeltDebugEvent: Testing e performance monitoring
      * 
+     * SHARED ENUMS:
+     * - AudioEscalationLevel: Livelli escalation condivisi con AudioFeature
+     * 
      * Questo sistema garantisce comunicazione loose-coupled tra:
      * - SeatBeltFeature (logic)
      * - SeatBeltBehaviour (UI)  
-     * - Audio system
+     * - AudioFeature (sistema audio)
      * - Debug system
      * 
      * Perfettamente integrato nell'architettura Mercedes esistente.
+     * Supporta audio continuo ogni 2 secondi con escalation temporizzata.
      */
 
 	#endregion

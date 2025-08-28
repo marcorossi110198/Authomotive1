@@ -24,6 +24,9 @@ namespace ClusterAudi
 			// TODO: Aggiungere features quando le implementiamo:
 			// Features.Add<IDriveModeFeature>(new DriveModeFeature(this));
 
+			// AudioFeature
+			Features.Add<IAudioFeature>(new AudioFeature(this));
+
 			// WelcomeFeature
 			Features.Add<IWelcomeFeature>(new WelcomeFeature(this));
 

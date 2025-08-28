@@ -434,7 +434,6 @@ namespace ClusterAudiFeatures
 			if (e.ShowWarning)
 			{
 				SetWarningPanelVisible(true);
-				UpdateWarningColor(e.WarningColor);
 			}
 			else
 			{
@@ -502,26 +501,6 @@ namespace ClusterAudiFeatures
 			{
 				_warningPanelCoroutine = StartCoroutine(AnimateWarningPanelFadeIn());
 			}
-		}
-
-		/// <summary>
-		/// Aggiorna colore warning - SOLO se esplicitamente richiesto
-		/// </summary>
-		private void UpdateWarningColor(Color color)
-		{
-			// NON aggiorniamo automaticamente il colore del testo
-			// Il colore rimane quello impostato nell'Inspector di Unity
-
-			// Aggiorniamo SOLO il background se disponibile
-			if (_warningBackground != null)
-			{
-				var bgColor = color;
-				bgColor.a = 0.1f; // Background semi-trasparente
-				_warningBackground.color = bgColor;
-			}
-
-			// DEBUG: Log per vedere che colore è stato richiesto
-			Debug.Log($"[SEATBELT UI] 🎨 Colore warning richiesto: {color} (ma testo mantiene colore Unity)");
 		}
 
 		#endregion

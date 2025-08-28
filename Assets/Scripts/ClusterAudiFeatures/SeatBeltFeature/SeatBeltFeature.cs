@@ -341,12 +341,12 @@ namespace ClusterAudiFeatures
 			// Se warning attivo, aggiorna escalation audio
 			if (_isWarningSystemActive)
 			{
-				UpdateAudioEscalation();
 			}
 		}
 
 		/// <summary>
 		/// Avvia il sistema di warning
+		/// VERSIONE AGGIORNATA: Con audio continuo ogni 2 secondi
 		/// </summary>
 		private void StartWarningSystem()
 		{
@@ -376,18 +376,18 @@ namespace ClusterAudiFeatures
 				}
 			}
 
-			// Attiva primo livello audio
+			// Avvia sistema audio continuo
 			if (_currentConfiguration.EnableAudioWarning)
 			{
-				_broadcaster.Broadcast(new PlaySeatBeltAudioEvent(
-					SeatBeltData.SOFT_BEEP_AUDIO_PATH, 0.7f, 2, AudioEscalationLevel.Soft));
+				StartContinuousAudioWarning();
 			}
 
-			Debug.Log("[SEATBELT FEATURE] ?? WARNING SYSTEM ATTIVATO");
+			Debug.Log("[SEATBELT FEATURE] 🚨 WARNING SYSTEM ATTIVATO con audio continuo");
 		}
 
 		/// <summary>
 		/// Ferma il sistema di warning
+		/// VERSIONE AGGIORNATA: Ferma anche audio continuo
 		/// </summary>
 		private void StopWarningSystem(SeatBeltWarningStopReason reason)
 		{
@@ -396,6 +396,9 @@ namespace ClusterAudiFeatures
 			float totalDuration = Time.time - _warningStartTime;
 			_isWarningSystemActive = false;
 			_currentAudioLevel = AudioEscalationLevel.None;
+
+			// 🆕 NUOVO: Ferma sistema audio continuo
+			StopContinuousAudioWarning();
 
 			// Broadcast evento fine warning
 			_broadcaster.Broadcast(new SeatBeltWarningStoppedEvent(totalDuration, reason));
@@ -406,41 +409,129 @@ namespace ClusterAudiFeatures
 			// Disattiva flashing
 			_broadcaster.Broadcast(new SeatBeltFlashIconsEvent(new SeatBeltData.SeatBeltPosition[0], false));
 
-			Debug.Log($"[SEATBELT FEATURE] ? WARNING SYSTEM FERMATO: {reason} (durata: {totalDuration:F1}s)");
+			Debug.Log($"[SEATBELT FEATURE] ✅ WARNING SYSTEM FERMATO: {reason} (durata: {totalDuration:F1}s) - Audio fermato");
+		}
+
+		#endregion
+
+		#region Continuous Audio System - NUOVO
+
+		/// <summary>
+		/// Coroutine per audio continuo SeatBelt
+		/// </summary>
+		private Coroutine _continuousAudioCoroutine;
+
+		/// <summary>
+		/// Avvia sistema audio continuo ogni 2 secondi
+		/// </summary>
+		private void StartContinuousAudioWarning()
+		{
+			// Ferma coroutine precedente se attiva
+			if (_continuousAudioCoroutine != null)
+			{
+				_client.StopCoroutine(_continuousAudioCoroutine);
+			}
+
+			// Avvia nuova coroutine audio continuo
+			_continuousAudioCoroutine = _client.StartCoroutine(ContinuousAudioCoroutine());
+			Debug.Log("[SEATBELT FEATURE] 🔄 Audio continuo avviato (ogni 2 secondi)");
 		}
 
 		/// <summary>
-		/// Aggiorna escalation audio basata sul tempo
+		/// Ferma sistema audio continuo
 		/// </summary>
-		private void UpdateAudioEscalation()
+		private void StopContinuousAudioWarning()
 		{
-			if (!_currentConfiguration.AudioEscalationEnabled) return;
-
-			float warningDuration = Time.time - _warningStartTime;
-			var newLevel = SeatBeltData.GetAudioEscalationLevel(warningDuration);
-
-			if (newLevel != _currentAudioLevel)
+			if (_continuousAudioCoroutine != null)
 			{
-				var oldLevel = _currentAudioLevel;
-				_currentAudioLevel = newLevel;
-
-				string audioPath = newLevel switch
-				{
-					AudioEscalationLevel.Soft => SeatBeltData.SOFT_BEEP_AUDIO_PATH,
-					AudioEscalationLevel.Urgent => SeatBeltData.URGENT_BEEP_AUDIO_PATH,
-					AudioEscalationLevel.Continuous => SeatBeltData.CONTINUOUS_BEEP_AUDIO_PATH,
-					_ => SeatBeltData.SOFT_BEEP_AUDIO_PATH
-				};
-
-				// Broadcast escalation event
-				_broadcaster.Broadcast(new SeatBeltAudioEscalationEvent(
-					oldLevel, newLevel, warningDuration, audioPath));
-
-				// Play nuovo livello audio
-				_broadcaster.Broadcast(new PlaySeatBeltAudioEvent(audioPath, 0.8f, 3, newLevel));
-
-				Debug.Log($"[SEATBELT FEATURE] ?? Audio escalation: {oldLevel} ? {newLevel}");
+				_client.StopCoroutine(_continuousAudioCoroutine);
+				_continuousAudioCoroutine = null;
 			}
+
+			// Ferma anche audio corrente nel speaker
+			_broadcaster.Broadcast(new StopSeatBeltAudioEvent());
+
+			Debug.Log("[SEATBELT FEATURE] 🛑 Audio continuo fermato");
+		}
+
+		/// <summary>
+		/// Coroutine che gestisce audio continuo ogni 2 secondi con escalation
+		/// </summary>
+		private System.Collections.IEnumerator ContinuousAudioCoroutine()
+		{
+			const float AUDIO_INTERVAL = 2f; // Intervallo fisso 2 secondi
+
+			while (_isWarningSystemActive)
+			{
+				// Calcola livello escalation attuale
+				float warningDuration = Time.time - _warningStartTime;
+				var currentLevel = SeatBeltData.GetAudioEscalationLevel(warningDuration);
+
+				// Se livello è cambiato, aggiorna
+				if (currentLevel != _currentAudioLevel)
+				{
+					var oldLevel = _currentAudioLevel;
+					_currentAudioLevel = currentLevel;
+
+					// Broadcast escalation event
+					_broadcaster.Broadcast(new SeatBeltAudioEscalationEvent(
+						oldLevel, currentLevel, warningDuration, GetAudioPathForLevel(currentLevel)));
+
+					Debug.Log($"[SEATBELT FEATURE] 📈 Audio escalation: {oldLevel} → {currentLevel} (tempo: {warningDuration:F1}s)");
+				}
+
+				// Riproduci audio per livello corrente
+				PlayAudioForCurrentLevel();
+
+				// Aspetta 2 secondi prima del prossimo beep
+				yield return new WaitForSeconds(AUDIO_INTERVAL);
+			}
+
+			_continuousAudioCoroutine = null;
+			Debug.Log("[SEATBELT FEATURE] 🏁 Coroutine audio continuo terminata");
+		}
+
+		/// <summary>
+		/// Riproduci audio per il livello di escalation corrente
+		/// </summary>
+		private void PlayAudioForCurrentLevel()
+		{
+			string audioPath = GetAudioPathForLevel(_currentAudioLevel);
+			float volume = GetVolumeForLevel(_currentAudioLevel);
+
+			// Broadcast evento audio
+			_broadcaster.Broadcast(new PlaySeatBeltAudioEvent(
+				audioPath, volume, AudioData.SEATBELT_AUDIO_PRIORITY, _currentAudioLevel));
+
+			Debug.Log($"[SEATBELT FEATURE] 🔊 Audio riprodotto: {_currentAudioLevel} (vol: {volume:F1})");
+		}
+
+		/// <summary>
+		/// Ottiene path audio per livello escalation
+		/// </summary>
+		private string GetAudioPathForLevel(AudioEscalationLevel level)
+		{
+			return level switch
+			{
+				AudioEscalationLevel.Soft => SeatBeltData.SOFT_BEEP_AUDIO_PATH,
+				AudioEscalationLevel.Urgent => SeatBeltData.URGENT_BEEP_AUDIO_PATH,
+				AudioEscalationLevel.Continuous => SeatBeltData.CONTINUOUS_BEEP_AUDIO_PATH,
+				_ => SeatBeltData.SOFT_BEEP_AUDIO_PATH
+			};
+		}
+
+		/// <summary>
+		/// Ottiene volume per livello escalation
+		/// </summary>
+		private float GetVolumeForLevel(AudioEscalationLevel level)
+		{
+			return level switch
+			{
+				AudioEscalationLevel.Soft => AudioData.SEATBELT_SOFT_VOLUME,
+				AudioEscalationLevel.Urgent => AudioData.SEATBELT_URGENT_VOLUME,
+				AudioEscalationLevel.Continuous => AudioData.SEATBELT_CONTINUOUS_VOLUME,
+				_ => AudioData.SEATBELT_SOFT_VOLUME
+			};
 		}
 
 		#endregion
