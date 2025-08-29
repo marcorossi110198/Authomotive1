@@ -48,6 +48,9 @@ namespace ClusterAudi
 			// DoorLockFeature
 			Features.Add<IDoorLockFeature>(new DoorLockFeature(this));
 
+			// LaneAssistFeature
+			Features.Add<ILaneAssistFeature>(new LaneAssistFeature(this));
+
 			Debug.Log("[CLUSTER CLIENT] ✅ Features inizializzate (placeholder per ora)");
 		}
 

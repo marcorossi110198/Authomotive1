@@ -50,6 +50,9 @@ namespace ClusterAudiFeatures
 
 			// Sottoscrivi agli eventi audio DoorLock
 			broadcaster.Add<DoorLockAudioRequestEvent>(OnPlayDoorLockAudio);
+
+			// Sottoscrivi agli eventi audio LaneAssist
+			broadcaster.Add<LaneAssistAudioRequestEvent>(OnPlayLaneAssistAudio);
 		}
 
 		#endregion
@@ -157,6 +160,16 @@ namespace ClusterAudiFeatures
 			PlayAudioClip(e.AudioPath, e.Volume, e.Priority);
 		}
 
+		/// <summary>
+		/// Gestisce eventi LaneAssist audio
+		/// </summary>
+		private void OnPlayLaneAssistAudio(LaneAssistAudioRequestEvent e)
+		{
+			Debug.Log($"[AUDIO FEATURE] 🛣️ Richiesta audio LaneAssist: {e.AudioPath} ({e.DepartureType})");
+
+			PlayAudioClip(e.AudioPath, e.Volume, e.Priority);
+		}
+
 		#endregion
 
 		#region Fallback Creation
@@ -197,6 +210,7 @@ namespace ClusterAudiFeatures
 			{
 				_broadcaster.Remove<PlaySeatBeltAudioEvent>(OnPlaySeatBeltAudio);
 				_broadcaster.Remove<DoorLockAudioRequestEvent>(OnPlayDoorLockAudio);
+				_broadcaster.Remove<LaneAssistAudioRequestEvent>(OnPlayLaneAssistAudio);
 			}
 		}
 

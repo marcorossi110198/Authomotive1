@@ -160,6 +160,10 @@ namespace ClusterAudi
 				var doorLockFeature = client.Features.Get<IDoorLockFeature>();
 				await doorLockFeature.InstantiateDoorLockFeature();
 
+				// Istanzia LaneAssistFeature
+				var laneAssistFeature = client.Features.Get<ILaneAssistFeature>();
+				await laneAssistFeature.InstantiateLaneAssistFeature();
+
 				Debug.Log("[CLUSTER STARTUP] ✅ WelcomeFeature istanziata");
 			}
 			catch (System.Exception ex)
