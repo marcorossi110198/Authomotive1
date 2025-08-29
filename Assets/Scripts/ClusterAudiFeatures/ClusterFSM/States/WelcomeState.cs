@@ -3,14 +3,16 @@ using ClusterAudiFeatures;
 using UnityEngine;
 
 /// <summary>
-/// Stato di benvenuto del cluster.
-/// Gestisce la schermata di benvenuto e le transizioni alle modalità di guida.
-/// Segue il pattern degli stati del progetto Mercedes.
+/// Stato di benvenuto del cluster - VERSIONE CORRETTA FINALE
+/// ESC COMPLETAMENTE RIMOSSO da qui
 /// </summary>
 public class WelcomeState : ClusterBaseState
 {
 	private IBroadcaster _broadcaster;
 	private IWelcomeFeature _welcomeFeature;
+
+	// Flag per evitare doppia istanziazione
+	private bool _isWelcomeFeatureInstantiated = false;
 
 	public WelcomeState(ClusterStateContext context) : base(context)
 	{
@@ -25,8 +27,8 @@ public class WelcomeState : ClusterBaseState
 		// Sottoscrivi agli eventi di transizione
 		_broadcaster.Add<WelcomeTransitionEvent>(OnWelcomeTransition);
 
-		// Avvia Welcome Feature (se non già avviata)
-		StartWelcomeFeature();
+		// Istanzia solo se non già fatto
+		StartWelcomeFeatureOnce();
 	}
 
 	public override void StateOnExit()
@@ -35,39 +37,48 @@ public class WelcomeState : ClusterBaseState
 
 		// Rimuovi sottoscrizione eventi
 		_broadcaster.Remove<WelcomeTransitionEvent>(OnWelcomeTransition);
+
+		// Cleanup flag quando esci dallo stato
+		_isWelcomeFeatureInstantiated = false;
 	}
 
 	public override void StateOnUpdate()
 	{
-		// Gestione debug keys F1-F4
+		// Gestione debug keys SOLO F1-F4 (ESC COMPLETAMENTE RIMOSSO)
 		HandleDebugInput();
 	}
 
 	/// <summary>
-	/// Avvia la Welcome Feature se necessario
+	/// Istanzia WelcomeFeature solo una volta
 	/// </summary>
-	private async void StartWelcomeFeature()
+	private async void StartWelcomeFeatureOnce()
 	{
+		if (_isWelcomeFeatureInstantiated)
+		{
+			Debug.Log("[WELCOME STATE] ⚠️ WelcomeFeature già istanziata - skip");
+			return;
+		}
+
 		try
 		{
-			// La WelcomeFeature potrebbe essere già istanziata dal ClusterStartUpFlow
-			// Questo è un backup nel caso non lo fosse
+			Debug.Log("[WELCOME STATE] 🚀 Istanziazione WelcomeFeature...");
+
 			await _welcomeFeature.InstantiateWelcomeFeature();
+
+			_isWelcomeFeatureInstantiated = true;
+			Debug.Log("[WELCOME STATE] ✅ WelcomeFeature istanziata correttamente");
 		}
 		catch (System.Exception ex)
 		{
-			Debug.LogWarning($"[WELCOME STATE] WelcomeFeature già istanziata o errore: {ex.Message}");
+			Debug.LogError($"[WELCOME STATE] ❌ Errore istanziazione WelcomeFeature: {ex.Message}");
+			Debug.LogException(ex);
 		}
 	}
 
-	/// <summary>
-	/// Gestisce le transizioni dalla Welcome Screen
-	/// </summary>
 	private void OnWelcomeTransition(WelcomeTransitionEvent e)
 	{
 		Debug.Log($"[WELCOME STATE] 🔄 Richiesta transizione a: {e.TargetState}");
 
-		// Valida che lo stato target sia valido
 		if (WelcomeData.IsValidState(e.TargetState))
 		{
 			_context.ClusterStateMachine.GoTo(e.TargetState);
@@ -79,7 +90,7 @@ public class WelcomeState : ClusterBaseState
 	}
 
 	/// <summary>
-	/// Gestisce input debug per transizioni manuali
+	/// SOLO F1-F3 per debug - ESC COMPLETAMENTE RIMOSSO
 	/// </summary>
 	private void HandleDebugInput()
 	{
@@ -99,12 +110,7 @@ public class WelcomeState : ClusterBaseState
 			_context.ClusterStateMachine.GoTo(WelcomeData.SPORT_MODE_STATE);
 		}
 
-		// ESC per tornare a Welcome (utile per testing)
-		else if (Input.GetKeyDown(KeyCode.Escape))
-		{
-			Debug.Log("[WELCOME STATE] 🔄 Reset: ESC -> Welcome State");
-			// Già in Welcome, riavvia la feature
-			StartWelcomeFeature();
-		}
+		// ESC COMPLETAMENTE RIMOSSO DA QUI
+		// Verrà gestito centralmente negli altri stati
 	}
 }

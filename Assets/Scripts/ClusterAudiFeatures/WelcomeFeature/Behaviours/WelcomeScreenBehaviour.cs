@@ -121,7 +121,7 @@ namespace ClusterAudiFeatures
 
 			if (_welcomeCanvasGroup != null)
 			{
-				_welcomeCanvasGroup.alpha = 0f; // Inizia invisibile
+				_welcomeCanvasGroup.alpha = 1f; // Inizia visibile
 				Debug.Log("[WELCOME SCREEN] ✅ CanvasGroup configurato");
 			}
 
@@ -238,7 +238,7 @@ namespace ClusterAudiFeatures
 		private IEnumerator LogoAnimationSequence()
 		{
 			// 1. Fade In Canvas
-			yield return StartCoroutine(FadeInCanvas());
+			// yield return StartCoroutine(FadeInCanvas());
 
 			// 2. Fade In Logo iniziale
 			yield return StartCoroutine(FadeInLogo());
@@ -498,12 +498,6 @@ namespace ClusterAudiFeatures
 		{
 			if (!_isWelcomeActive || _isTransitioning) return;
 
-			// SOLO ESCAPE: Skip welcome immediato
-			if (Input.GetKeyDown(KeyCode.Escape))
-			{
-				Debug.Log("[WELCOME SCREEN] ⏭️ Skip Welcome Screen");
-				TransitionToComfortMode();
-			}
 		}
 
 		/// <summary>

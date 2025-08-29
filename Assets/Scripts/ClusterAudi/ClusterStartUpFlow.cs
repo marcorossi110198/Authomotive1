@@ -6,7 +6,7 @@ namespace ClusterAudi
 {
 	/// <summary>
 	/// Flusso di avvio del cluster automotive.
-	/// Segue il pattern di DashboardStartUpFlow.cs del progetto Mercedes.
+	/// CORRETTO: WelcomeFeature NON si istanzia qui, ma solo nello stato.
 	/// </summary>
 	public class ClusterStartUpFlow
 	{
@@ -37,8 +37,8 @@ namespace ClusterAudi
 				// 4. Avvia State Machine del cluster
 				await InitializeStateMachine(client, clientBroadcaster);
 
-				// 5. ISTANZIA LE FEATURES - AGGIUNTO!
-				await LoadClusterFeatures(client);
+				// 5. ISTANZIA SOLO LE FEATURES SEMPRE PRESENTI (non WelcomeFeature!)
+				await LoadPersistentFeatures(client);
 
 				// 6. Segnala completamento avvio
 				clientBroadcaster.Broadcast(new ClusterStartupCompletedEvent());
@@ -58,15 +58,13 @@ namespace ClusterAudi
 		{
 			Debug.Log("[CLUSTER STARTUP] 🚗 Inizializzazione dati veicolo...");
 
-			// Simula caricamento dati (in un'app reale potrebbe leggere da CAN bus, ecc.)
-			await Task.Delay(500); // Simula tempo di caricamento
+			await Task.Delay(500);
 
-			// Configura stato iniziale del veicolo
 			vehicleDataService.SetEngineRunning(true);
 			vehicleDataService.SetSpeed(0f);
-			vehicleDataService.SetRPM(800f); // RPM idle
-			vehicleDataService.SetGear(0); // Parcheggio
-			vehicleDataService.SetDriveMode(DriveMode.Comfort); // Modalità default
+			vehicleDataService.SetRPM(800f);
+			vehicleDataService.SetGear(0);
+			vehicleDataService.SetDriveMode(DriveMode.Comfort);
 
 			Debug.Log("[CLUSTER STARTUP] ✅ Dati veicolo inizializzati");
 		}
@@ -75,7 +73,6 @@ namespace ClusterAudi
 		{
 			Debug.Log("[CLUSTER STARTUP] 📡 Sottoscrizione eventi veicolo...");
 
-			// Sottoscrivi agli eventi per logging/debug
 			vehicleDataService.OnSpeedChanged += OnSpeedChanged;
 			vehicleDataService.OnRPMChanged += OnRPMChanged;
 			vehicleDataService.OnGearChanged += OnGearChanged;
@@ -90,7 +87,6 @@ namespace ClusterAudi
 
 			await Task.Delay(300);
 
-			// Crea State Machine e Context
 			var stateMachine = new ClusterFSM();
 			var context = new ClusterStateContext
 			{
@@ -100,7 +96,6 @@ namespace ClusterAudi
 				Broadcaster = broadcaster
 			};
 
-			// REGISTRA TUTTI GLI STATI - Seguendo pattern Mercedes
 			Debug.Log("[CLUSTER STARTUP] 📝 Registrazione stati...");
 			stateMachine.AddState("WelcomeState", new WelcomeState(context));
 			stateMachine.AddState("EcoModeState", new EcoModeState(context));
@@ -109,11 +104,10 @@ namespace ClusterAudi
 
 			Debug.Log("[CLUSTER STARTUP] ✅ Stati registrati nella State Machine");
 
-			// AVVIA CON WELCOME STATE - Come nel progetto Mercedes
+			// AVVIA CON WELCOME STATE
 			stateMachine.GoTo("WelcomeState");
 			Debug.Log("[CLUSTER STARTUP] 🚀 State Machine avviata con WelcomeState");
 
-			// ⭐ NUOVO: Passa la State Machine al Client per Update
 			if (client is ClusterClient clusterClient)
 			{
 				clusterClient.SetStateMachine(stateMachine);
@@ -122,57 +116,60 @@ namespace ClusterAudi
 			Debug.Log("[CLUSTER STARTUP] ✅ State Machine completamente attiva");
 		}
 
-		private async Task LoadClusterFeatures(Client client)
+		/// <summary>
+		/// CORRETTO: Carica SOLO le features sempre presenti (non WelcomeFeature!)
+		/// </summary>
+		private async Task LoadPersistentFeatures(Client client)
 		{
-			Debug.Log("[CLUSTER STARTUP] 🧩 Caricamento features cluster...");
+			Debug.Log("[CLUSTER STARTUP] 🧩 Caricamento features persistenti...");
 
 			try
 			{
-				// Istanzia AudioFeature
+				// ✅ FEATURES SEMPRE PRESENTI - SI ISTANZIANO NEL STARTUP
+
+				// Istanzia AudioFeature (sempre presente)
 				var audioFeature = client.Features.Get<IAudioFeature>();
 				await audioFeature.InstantiateAudioFeature();
 
-				// Istanzia WelcomeFeature
-				var welcomeFeature = client.Features.Get<IWelcomeFeature>();
-				await welcomeFeature.InstantiateWelcomeFeature();
-
-				// ClusterDriveModeFeature
+				// ClusterDriveModeFeature (sempre presente)
 				var clusterDriveModeFeature = client.Features.Get<IClusterDriveModeFeature>();
 				await clusterDriveModeFeature.InstantiateClusterDriveModeFeature();
 
-				// Carica SpeedometerFeature
+				// Carica SpeedometerFeature (sempre presente)
 				var speedometerFeature = client.Features.Get<ISpeedometerFeature>();
 				await speedometerFeature.InstantiateSpeedometerFeature();
 
-				// AutomaticGearboxFeature
+				// AutomaticGearboxFeature (sempre presente)
 				var automaticgearboxFeature = client.Features.Get<IAutomaticGearboxFeature>();
 				await automaticgearboxFeature.InstantiateAutomaticGearboxFeature();
 
-				// Istanzia SeatBeltFeature
+				// SeatBeltFeature (sempre presente)
 				var seatBeltFeature = client.Features.Get<ISeatBeltFeature>();
 				await seatBeltFeature.InstantiateSeatBeltFeature();
 
-				// Istanzia ClockFeature
+				// ClockFeature (sempre presente)
 				var clockFeature = client.Features.Get<IClockFeature>();
 				await clockFeature.InstantiateClockFeature();
 
-				// Istanzia DoorLockFeature
+				// DoorLockFeature (sempre presente)
 				var doorLockFeature = client.Features.Get<IDoorLockFeature>();
 				await doorLockFeature.InstantiateDoorLockFeature();
 
-				// Istanzia LaneAssistFeature
+				// LaneAssistFeature (sempre presente)
 				var laneAssistFeature = client.Features.Get<ILaneAssistFeature>();
 				await laneAssistFeature.InstantiateLaneAssistFeature();
 
-				Debug.Log("[CLUSTER STARTUP] ✅ WelcomeFeature istanziata");
+				// ❌ RIMOSSA: WelcomeFeature - SI ISTANZIA SOLO NELLO STATO
+				// var welcomeFeature = client.Features.Get<IWelcomeFeature>();
+				// await welcomeFeature.InstantiateWelcomeFeature();
+
+				Debug.Log("[CLUSTER STARTUP] ✅ Features persistenti caricate");
 			}
 			catch (System.Exception ex)
 			{
-				Debug.LogError($"[CLUSTER STARTUP] ❌ Errore caricamento features: {ex.Message}");
+				Debug.LogError($"[CLUSTER STARTUP] ❌ Errore caricamento features persistenti: {ex.Message}");
 				Debug.LogException(ex);
 			}
-
-			Debug.Log("[CLUSTER STARTUP] ✅ Features cluster caricate");
 		}
 
 		#endregion
@@ -208,8 +205,6 @@ namespace ClusterAudi
 		#endregion
 	}
 
-	#region Events
-
 	/// <summary>
 	/// Evento segnalato al completamento dell'avvio del cluster
 	/// </summary>
@@ -222,6 +217,4 @@ namespace ClusterAudi
 			StartupTime = System.DateTime.Now;
 		}
 	}
-
-	#endregion
 }
