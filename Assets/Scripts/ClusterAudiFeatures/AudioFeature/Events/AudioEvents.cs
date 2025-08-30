@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 
 namespace ClusterAudiFeatures
 {
@@ -6,7 +6,7 @@ namespace ClusterAudiFeatures
 	/// Eventi specifici per Audio Feature
 	/// Pattern IDENTICO a Mercedes per comunicazione event-driven
 	/// 
-	/// RESPONSABILITÀ:
+	/// RESPONSABILITï¿½:
 	/// - Eventi generali del sistema audio (non specifici SeatBelt)
 	/// - Stati riproduzione audio
 	/// - Controlli volume e configurazione
@@ -147,7 +147,7 @@ namespace ClusterAudiFeatures
 	}
 
 	/// <summary>
-	/// Evento cambio configurazione audio per modalità guida
+	/// Evento cambio configurazione audio per modalitï¿½ guida
 	/// </summary>
 	public class AudioDriveModeConfigEvent
 	{
@@ -167,7 +167,7 @@ namespace ClusterAudiFeatures
 	}
 
 	/// <summary>
-	/// Profili audio per modalità guida
+	/// Profili audio per modalitï¿½ guida
 	/// </summary>
 	public enum AudioProfile
 	{
@@ -323,7 +323,7 @@ namespace ClusterAudiFeatures
      * 
      * VOLUME & CONFIGURATION EVENTS:
      * - AudioMasterVolumeChangedEvent: Cambio volume master
-     * - AudioDriveModeConfigEvent: Config audio per modalità guida
+     * - AudioDriveModeConfigEvent: Config audio per modalitï¿½ guida
      * 
      * AUDIO SYSTEM MANAGEMENT EVENTS:
      * - AudioSystemEnabledEvent: Enable/disable sistema
@@ -333,14 +333,14 @@ namespace ClusterAudiFeatures
      * - AudioPerformanceEvent: Monitoring performance
      * - AudioDebugEvent: Debug e testing
      * 
-     * SEPARAZIONE RESPONSABILITÀ:
+     * SEPARAZIONE RESPONSABILITï¿½:
      * - AudioEvents.cs: Eventi generali sistema audio
      * - SeatBeltEvents.cs: Eventi specifici SeatBelt (PlaySeatBeltAudioEvent, etc.)
      * 
      * Questo permette:
      * 1. Sistema audio modulare e estensibile
      * 2. SeatBelt audio come caso specifico
-     * 3. Possibilità di aggiungere altre categorie audio (Navigation, Phone, etc.)
+     * 3. Possibilitï¿½ di aggiungere altre categorie audio (Navigation, Phone, etc.)
      * 4. Monitoring e debugging completo
      * 
      * Perfettamente integrato nell'architettura Mercedes esistente.
