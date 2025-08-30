@@ -520,7 +520,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &8212977639387407098
 RectTransform:
   m_ObjectHideFlags: 0
@@ -703,8 +703,3 @@ MonoBehaviour:
   _passengerIcon: {fileID: 909413483352209819}
   _rearLeftIcon: {fileID: 1401038407358321090}
   _rearRightIcon: {fileID: 6052592544114973297}
-  _warningPanel: {fileID: 8212803146731835890}
-  _warningText: {fileID: 2371326957597278648}
-  _warningBackground: {fileID: 0}
-  _systemLabel: {fileID: 0}
-  _iconsContainer: {fileID: 0}

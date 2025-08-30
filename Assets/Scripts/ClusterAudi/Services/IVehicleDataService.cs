@@ -32,7 +32,7 @@ namespace ClusterAudi
 
 		#endregion
 
-		#region Metodi Avanzati per Stati Modalità (AGGIUNTI)
+		#region Metodi Avanzati per Stati Modalità
 
 		// Dati di base avanzati
 		float GetThrottlePosition();

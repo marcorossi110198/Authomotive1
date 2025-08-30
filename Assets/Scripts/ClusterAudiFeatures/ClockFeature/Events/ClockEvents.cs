@@ -3,22 +3,17 @@ using System;
 namespace ClusterAudiFeatures
 {
 	/// <summary>
-	/// Eventi per Clock Feature - VERSIONE SEMPLICE
-	/// Pattern IDENTICO agli eventi che hai già implementato
-	/// </summary>
-
-	/// <summary>
-	/// Evento aggiornamento orario
+	/// Eventi per Clock Feature
 	/// </summary>
 	public class ClockTimeUpdateEvent
 	{
-		public string CurrentTime { get; }
-		public DateTime DateTime { get; }
+		public string TimeString { get; }
+		public DateTime CurrentTime { get; }
 
-		public ClockTimeUpdateEvent(string currentTime, DateTime dateTime)
+		public ClockTimeUpdateEvent(string timeString, DateTime currentTime)
 		{
+			TimeString = timeString;
 			CurrentTime = currentTime;
-			DateTime = dateTime;
 		}
 	}
 }

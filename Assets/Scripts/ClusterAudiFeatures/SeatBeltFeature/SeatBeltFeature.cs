@@ -1,162 +1,104 @@
 ﻿using ClusterAudi;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace ClusterAudiFeatures
 {
 	/// <summary>
-	/// Implementazione SeatBelt Feature
-	/// IDENTICA al pattern SpeedometerFeature seguendo modello Mercedes
-	/// 
-	/// RESPONSABILITÀ:
-	/// - Gestisce l'istanziazione UI seatbelt
-	/// - Monitora 4 cinture di sicurezza  
-	/// - Speed monitoring con soglie per modalità
-	/// - Audio warning escalation system
-	/// - Integration con VehicleDataService
+	/// SeatBelt Feature - VERSIONE CORRETTA
+	/// Rimosso: Warning Panel logic
+	/// Mantenuto: Warning system + lampeggio icone + audio continuo
 	/// </summary>
 	public class SeatBeltFeature : BaseFeature, ISeatBeltFeature, ISeatBeltFeatureInternal
 	{
 		#region Private Fields
 
-		/// <summary>
-		/// Configurazione corrente SeatBelt
-		/// </summary>
 		private SeatBeltConfig _currentConfiguration;
-
-		/// <summary>
-		/// Stati attuali delle 4 cinture
-		/// Indici: 0=Driver, 1=Passenger, 2=RearLeft, 3=RearRight
-		/// </summary>
 		private SeatBeltData.SeatBeltStatus[] _seatBeltStates;
-
-		/// <summary>
-		/// Riferimento al behaviour istanziato (per aggiornamenti runtime)
-		/// </summary>
 		private SeatBeltBehaviour _seatBeltBehaviour;
 
-		/// <summary>
-		/// Warning system state
-		/// </summary>
+		// Warning system
 		private bool _isWarningSystemActive = false;
 		private float _warningStartTime = 0f;
 		private AudioEscalationLevel _currentAudioLevel = AudioEscalationLevel.None;
 
-		/// <summary>
-		/// Sistema abilitato/disabilitato
-		/// </summary>
-		private bool _systemEnabled = true;
-
-		/// <summary>
-		/// Ultima velocità controllata (per ottimizzazioni)
-		/// </summary>
-		private float _lastCheckedSpeed = 0f;
-
-		/// <summary>
-		/// Servizi cached per performance
-		/// </summary>
+		// Services
 		private IVehicleDataService _vehicleDataService;
+
+		// Continuous audio
+		private System.Collections.IEnumerator _continuousAudioCoroutine;
 
 		#endregion
 
-		#region Constructor - IDENTICO Mercedes
+		#region Constructor
 
-		/// <summary>
-		/// Costruttore - IDENTICO al pattern Mercedes
-		/// </summary>
 		public SeatBeltFeature(Client client) : base(client)
 		{
-			Debug.Log("[SEATBELT FEATURE] ??? SeatBeltFeature inizializzata");
+			Debug.Log("[SEATBELT FEATURE] 🛡️ SeatBeltFeature inizializzata");
 
-			// Inizializza array stati cinture (default: sconosciuto)
+			// Inizializza stati (tutte slacciate per testing)
 			_seatBeltStates = new SeatBeltData.SeatBeltStatus[SeatBeltData.TOTAL_SEATBELTS];
 			for (int i = 0; i < SeatBeltData.TOTAL_SEATBELTS; i++)
 			{
-				_seatBeltStates[i] = SeatBeltData.SeatBeltStatus.Unknown;
+				_seatBeltStates[i] = SeatBeltData.SeatBeltStatus.Unfastened;
 			}
 
 			// Cache servizi
 			_vehicleDataService = client.Services.Get<IVehicleDataService>();
-
-			// Configurazione iniziale basata su modalità corrente
 			_currentConfiguration = SeatBeltData.GetConfigForDriveMode(_vehicleDataService.CurrentDriveMode);
 
-			// Sottoscrivi agli eventi modalità guida + velocità
-			var broadcaster = client.Services.Get<IBroadcaster>();
-			broadcaster.Add<DriveModeChangedEvent>(OnDriveModeChanged);
+			// Sottoscrivi eventi
 			_vehicleDataService.OnSpeedChanged += OnSpeedChanged;
 
-			// Inizializza stati realistici per testing (normalmente verrebbero da sensori CAN bus)
-			InitializeRealisticSeatBeltStates();
+			Debug.Log("[SEATBELT FEATURE] 🔧 Stati iniziali: TUTTE SLACCIATE per testing");
 		}
 
 		#endregion
 
-		#region ISeatBeltFeature Implementation - Public Interface
+		#region ISeatBeltFeature Implementation
 
-		/// <summary>
-		/// Istanzia la UI SeatBelt - IDENTICO al pattern Mercedes
-		/// </summary>
 		public async Task InstantiateSeatBeltFeature()
 		{
-			Debug.Log("[SEATBELT FEATURE] ?? Istanziazione SeatBelt UI...");
+			Debug.Log("[SEATBELT FEATURE] 🚀 Istanziazione SeatBelt UI...");
 
 			try
 			{
-				// IDENTICO Mercedes: usa AssetService per caricare prefab
 				var seatBeltInstance = await _assetService.InstantiateAsset<SeatBeltBehaviour>(
 					SeatBeltData.SEATBELT_PREFAB_PATH);
 
 				if (seatBeltInstance != null)
 				{
-					// IDENTICO Mercedes: Initialize con this per dependency injection
 					seatBeltInstance.Initialize(this);
 					_seatBeltBehaviour = seatBeltInstance;
-
-					// Applica configurazione iniziale
-					_seatBeltBehaviour.ApplyConfiguration(_currentConfiguration);
 					_seatBeltBehaviour.UpdateAllSeatBeltStates(_seatBeltStates);
-
-					Debug.Log("[SEATBELT FEATURE] ? SeatBelt UI istanziata da prefab");
+					Debug.Log("[SEATBELT FEATURE] ✅ UI istanziata da prefab");
 				}
 				else
 				{
-					Debug.LogWarning("[SEATBELT FEATURE] ?? Prefab non trovato: " +
-						SeatBeltData.SEATBELT_PREFAB_PATH);
-
-					// Fallback: Crea dinamicamente (per development)
+					Debug.LogWarning("[SEATBELT FEATURE] ⚠️ Prefab non trovato, creando fallback...");
 					await CreateSeatBeltDynamically();
 				}
 			}
 			catch (System.Exception ex)
 			{
-				Debug.LogError($"[SEATBELT FEATURE] ? Errore istanziazione: {ex.Message}");
-				Debug.LogException(ex);
+				Debug.LogError($"[SEATBELT FEATURE] ❌ Errore istanziazione: {ex.Message}");
 			}
 		}
 
-		/// <summary>
-		/// Imposta lo stato di una specifica cintura
-		/// </summary>
 		public void SetSeatBeltStatus(SeatBeltData.SeatBeltPosition position, SeatBeltData.SeatBeltStatus status)
 		{
 			int index = (int)position;
-			if (index < 0 || index >= SeatBeltData.TOTAL_SEATBELTS)
-			{
-				Debug.LogError($"[SEATBELT FEATURE] ? Posizione cintura non valida: {position}");
-				return;
-			}
+			if (index < 0 || index >= SeatBeltData.TOTAL_SEATBELTS) return;
 
 			var oldStatus = _seatBeltStates[index];
-			if (oldStatus == status) return; // Nessun cambiamento
+			if (oldStatus == status) return;
 
 			_seatBeltStates[index] = status;
 
 			// Broadcast evento cambio stato
 			_broadcaster.Broadcast(new SeatBeltStatusChangedEvent(position, oldStatus, status));
 
-			// Aggiorna UI se disponibile
+			// Aggiorna UI
 			if (_seatBeltBehaviour != null)
 			{
 				_seatBeltBehaviour.UpdateSeatBeltStatus(position, status);
@@ -165,165 +107,44 @@ namespace ClusterAudiFeatures
 			// Rivaluta warning system
 			EvaluateWarningSystem();
 
-			Debug.Log($"[SEATBELT FEATURE] ?? Cintura {position}: {oldStatus} ? {status}");
+			Debug.Log($"[SEATBELT FEATURE] 🔄 Cintura {position}: {oldStatus} → {status}");
 		}
 
-		/// <summary>
-		/// Aggiorna configurazione per modalità guida
-		/// </summary>
-		public void UpdateConfigurationForDriveMode(DriveMode mode)
-		{
-			var oldConfig = _currentConfiguration;
-			_currentConfiguration = SeatBeltData.GetConfigForDriveMode(mode);
-
-			// Broadcast evento configurazione
-			_broadcaster.Broadcast(new SeatBeltConfigurationUpdatedEvent(
-				mode, _currentConfiguration, oldConfig.SpeedThreshold, _currentConfiguration.SpeedThreshold));
-
-			// Aggiorna behaviour se istanziato
-			if (_seatBeltBehaviour != null)
-			{
-				_seatBeltBehaviour.ApplyConfiguration(_currentConfiguration);
-			}
-
-			// Rivaluta warning system con nuova configurazione
-			EvaluateWarningSystem();
-
-			Debug.Log($"[SEATBELT FEATURE] ?? Configurazione aggiornata per modalità: {mode}");
-		}
-
-		/// <summary>
-		/// Forza check del sistema cinture (per testing/debug)
-		/// </summary>
 		public void ForceWarningCheck()
 		{
-			Debug.Log("[SEATBELT FEATURE] ?? Check forzato sistema cinture");
+			Debug.Log("[SEATBELT FEATURE] 🔧 Check forzato sistema cinture");
 			EvaluateWarningSystem();
-
-			// Broadcast evento debug
-			_broadcaster.Broadcast(new SeatBeltDebugEvent(
-				"Manual warning check triggered",
-				SeatBeltDebugType.WarningTriggered,
-				new { Speed = _vehicleDataService.CurrentSpeed, States = _seatBeltStates }));
-		}
-
-		/// <summary>
-		/// Abilita/disabilita completamente il sistema cinture
-		/// </summary>
-		public void SetSeatBeltSystemEnabled(bool enabled)
-		{
-			if (_systemEnabled == enabled) return;
-
-			_systemEnabled = enabled;
-
-			// Stop warning se sistema disabilitato
-			if (!enabled && _isWarningSystemActive)
-			{
-				StopWarningSystem(SeatBeltWarningStopReason.SystemDisabled);
-			}
-
-			// Broadcast evento sistema
-			_broadcaster.Broadcast(new SeatBeltSystemEnabledEvent(enabled,
-				enabled ? "System enabled" : "System disabled"));
-
-			// Aggiorna UI
-			if (_seatBeltBehaviour != null)
-			{
-				_seatBeltBehaviour.SetSystemEnabled(enabled);
-			}
-
-			Debug.Log($"[SEATBELT FEATURE] {(enabled ? "? Sistema abilitato" : "? Sistema disabilitato")}");
 		}
 
 		#endregion
 
-		#region ISeatBeltFeatureInternal Implementation - Internal Interface
+		#region ISeatBeltFeatureInternal Implementation
 
-		/// <summary>
-		/// Ottiene il Client - IDENTICO al pattern Mercedes
-		/// </summary>
-		public Client GetClient()
-		{
-			return _client;
-		}
+		public Client GetClient() => _client;
 
-		/// <summary>
-		/// Ottiene la configurazione corrente SeatBelt
-		/// </summary>
-		public SeatBeltConfig GetCurrentConfiguration()
-		{
-			return _currentConfiguration;
-		}
+		public SeatBeltConfig GetCurrentConfiguration() => _currentConfiguration;
 
-		/// <summary>
-		/// Ottiene lo stato corrente di tutte le cinture
-		/// </summary>
 		public SeatBeltData.SeatBeltStatus[] GetAllSeatBeltStates()
 		{
-			// Restituisce copia dell'array per sicurezza
 			var copy = new SeatBeltData.SeatBeltStatus[SeatBeltData.TOTAL_SEATBELTS];
 			System.Array.Copy(_seatBeltStates, copy, SeatBeltData.TOTAL_SEATBELTS);
 			return copy;
 		}
 
-		/// <summary>
-		/// Verifica se il sistema warning è attualmente attivo
-		/// </summary>
-		public bool IsWarningSystemActive()
-		{
-			return _isWarningSystemActive;
-		}
-
-		/// <summary>
-		/// Ottiene il tempo totale dall'inizio del warning corrente
-		/// </summary>
-		public float GetCurrentWarningTime()
-		{
-			return _isWarningSystemActive ? (Time.time - _warningStartTime) : 0f;
-		}
-
-		#endregion
-
-		#region Event Handlers
-
-		/// <summary>
-		/// Gestisce cambio modalità guida
-		/// </summary>
-		private void OnDriveModeChanged(DriveModeChangedEvent e)
-		{
-			Debug.Log($"[SEATBELT FEATURE] ?? Modalità cambiata: {e.NewMode}");
-			UpdateConfigurationForDriveMode(e.NewMode);
-		}
-
-		/// <summary>
-		/// Gestisce cambio velocità per monitoring continuo
-		/// </summary>
-		private void OnSpeedChanged(float newSpeed)
-		{
-			// Ottimizzazione: controlla solo se velocità cambia significativamente
-			if (Mathf.Abs(newSpeed - _lastCheckedSpeed) > 1f) // Soglia 1 km/h
-			{
-				_lastCheckedSpeed = newSpeed;
-				EvaluateWarningSystem();
-			}
-		}
+		public bool IsWarningSystemActive() => _isWarningSystemActive;
 
 		#endregion
 
 		#region Warning System Core Logic
 
 		/// <summary>
-		/// Valuta se attivare/disattivare il sistema di warning
-		/// CORE LOGIC del sistema SeatBelt
+		/// Valuta se attivare warning system
 		/// </summary>
 		private void EvaluateWarningSystem()
 		{
-			if (!_systemEnabled) return;
-
 			float currentSpeed = _vehicleDataService.CurrentSpeed;
 			float speedThreshold = _currentConfiguration.SpeedThreshold;
 
-			// Verifica condizione warning: velocità > soglia AND almeno una cintura slacciata
 			bool shouldShowWarning = currentSpeed > speedThreshold && HasUnfastenedBelts();
 
 			if (shouldShowWarning && !_isWarningSystemActive)
@@ -332,21 +153,12 @@ namespace ClusterAudiFeatures
 			}
 			else if (!shouldShowWarning && _isWarningSystemActive)
 			{
-				var stopReason = currentSpeed <= speedThreshold
-					? SeatBeltWarningStopReason.SpeedReduced
-					: SeatBeltWarningStopReason.AllBeltsFastened;
-				StopWarningSystem(stopReason);
-			}
-
-			// Se warning attivo, aggiorna escalation audio
-			if (_isWarningSystemActive)
-			{
+				StopWarningSystem();
 			}
 		}
 
 		/// <summary>
-		/// Avvia il sistema di warning
-		/// VERSIONE AGGIORNATA: Con audio continuo ogni 2 secondi
+		/// Avvia warning system con lampeggio icone + audio
 		/// </summary>
 		private void StartWarningSystem()
 		{
@@ -360,20 +172,12 @@ namespace ClusterAudiFeatures
 			_broadcaster.Broadcast(new SeatBeltWarningStartedEvent(
 				_vehicleDataService.CurrentSpeed,
 				_currentConfiguration.SpeedThreshold,
-				unfastenedBelts,
-				_vehicleDataService.CurrentDriveMode));
+				unfastenedBelts));
 
-			// Attiva visual warning
-			if (_currentConfiguration.EnableVisualWarning)
+			// Attiva lampeggio icone cinture slacciate
+			if (_currentConfiguration.FlashingEnabled)
 			{
-				_broadcaster.Broadcast(new SeatBeltVisualWarningEvent(
-					true, "FASTEN SEATBELTS", SeatBeltData.WARNING_TEXT_COLOR, unfastenedBelts));
-
-				// Attiva flashing se abilitato
-				if (_currentConfiguration.FlashingEnabled)
-				{
-					_broadcaster.Broadcast(new SeatBeltFlashIconsEvent(unfastenedBelts, true));
-				}
+				_broadcaster.Broadcast(new SeatBeltFlashIconsEvent(unfastenedBelts, true, 1f)); // 1 secondo
 			}
 
 			// Avvia sistema audio continuo
@@ -382,14 +186,13 @@ namespace ClusterAudiFeatures
 				StartContinuousAudioWarning();
 			}
 
-			Debug.Log("[SEATBELT FEATURE] 🚨 WARNING SYSTEM ATTIVATO con audio continuo");
+			Debug.Log($"[SEATBELT FEATURE] 🚨 WARNING ATTIVATO: {unfastenedBelts.Length} cinture slacciate - Lampeggio + Audio ogni 2s");
 		}
 
 		/// <summary>
-		/// Ferma il sistema di warning
-		/// VERSIONE AGGIORNATA: Ferma anche audio continuo
+		/// Ferma warning system
 		/// </summary>
-		private void StopWarningSystem(SeatBeltWarningStopReason reason)
+		private void StopWarningSystem()
 		{
 			if (!_isWarningSystemActive) return;
 
@@ -397,43 +200,34 @@ namespace ClusterAudiFeatures
 			_isWarningSystemActive = false;
 			_currentAudioLevel = AudioEscalationLevel.None;
 
-			// 🆕 NUOVO: Ferma sistema audio continuo
+			// Ferma audio continuo
 			StopContinuousAudioWarning();
 
 			// Broadcast evento fine warning
-			_broadcaster.Broadcast(new SeatBeltWarningStoppedEvent(totalDuration, reason));
+			_broadcaster.Broadcast(new SeatBeltWarningStoppedEvent(totalDuration));
 
-			// Disattiva visual warning
-			_broadcaster.Broadcast(new SeatBeltVisualWarningEvent(false));
-
-			// Disattiva flashing
+			// Ferma lampeggio
 			_broadcaster.Broadcast(new SeatBeltFlashIconsEvent(new SeatBeltData.SeatBeltPosition[0], false));
 
-			Debug.Log($"[SEATBELT FEATURE] ✅ WARNING SYSTEM FERMATO: {reason} (durata: {totalDuration:F1}s) - Audio fermato");
+			Debug.Log($"[SEATBELT FEATURE] ✅ WARNING FERMATO (durata: {totalDuration:F1}s) - Audio e lampeggio fermati");
 		}
 
 		#endregion
 
-		#region Continuous Audio System - NUOVO
-
-		/// <summary>
-		/// Coroutine per audio continuo SeatBelt
-		/// </summary>
-		private Coroutine _continuousAudioCoroutine;
+		#region Continuous Audio System
 
 		/// <summary>
 		/// Avvia sistema audio continuo ogni 2 secondi
 		/// </summary>
 		private void StartContinuousAudioWarning()
 		{
-			// Ferma coroutine precedente se attiva
 			if (_continuousAudioCoroutine != null)
 			{
 				_client.StopCoroutine(_continuousAudioCoroutine);
 			}
 
-			// Avvia nuova coroutine audio continuo
-			_continuousAudioCoroutine = _client.StartCoroutine(ContinuousAudioCoroutine());
+			_continuousAudioCoroutine = ContinuousAudioCoroutine();
+			_client.StartCoroutine(_continuousAudioCoroutine);
 			Debug.Log("[SEATBELT FEATURE] 🔄 Audio continuo avviato (ogni 2 secondi)");
 		}
 
@@ -448,89 +242,46 @@ namespace ClusterAudiFeatures
 				_continuousAudioCoroutine = null;
 			}
 
-			// Ferma anche audio corrente nel speaker
 			_broadcaster.Broadcast(new StopSeatBeltAudioEvent());
-
 			Debug.Log("[SEATBELT FEATURE] 🛑 Audio continuo fermato");
 		}
 
 		/// <summary>
-		/// Coroutine che gestisce audio continuo ogni 2 secondi con escalation
+		/// Coroutine audio continuo con escalation
 		/// </summary>
 		private System.Collections.IEnumerator ContinuousAudioCoroutine()
 		{
-			const float AUDIO_INTERVAL = 2f; // Intervallo fisso 2 secondi
+			const float AUDIO_INTERVAL = 2f;
 
 			while (_isWarningSystemActive)
 			{
-				// Calcola livello escalation attuale
+				// Calcola escalation
 				float warningDuration = Time.time - _warningStartTime;
 				var currentLevel = SeatBeltData.GetAudioEscalationLevel(warningDuration);
 
-				// Se livello è cambiato, aggiorna
 				if (currentLevel != _currentAudioLevel)
 				{
-					var oldLevel = _currentAudioLevel;
 					_currentAudioLevel = currentLevel;
-
-					// Broadcast escalation event
-					_broadcaster.Broadcast(new SeatBeltAudioEscalationEvent(
-						oldLevel, currentLevel, warningDuration, GetAudioPathForLevel(currentLevel)));
-
-					Debug.Log($"[SEATBELT FEATURE] 📈 Audio escalation: {oldLevel} → {currentLevel} (tempo: {warningDuration:F1}s)");
+					Debug.Log($"[SEATBELT FEATURE] 📈 Audio escalation: {currentLevel} (tempo: {warningDuration:F1}s)");
 				}
 
-				// Riproduci audio per livello corrente
-				PlayAudioForCurrentLevel();
+				// Riproduci audio
+				string audioPath = GetAudioPathForLevel(_currentAudioLevel);
+				_broadcaster.Broadcast(new PlaySeatBeltAudioEvent(audioPath, 1f, 5));
 
-				// Aspetta 2 secondi prima del prossimo beep
 				yield return new WaitForSeconds(AUDIO_INTERVAL);
 			}
 
 			_continuousAudioCoroutine = null;
-			Debug.Log("[SEATBELT FEATURE] 🏁 Coroutine audio continuo terminata");
 		}
 
-		/// <summary>
-		/// Riproduci audio per il livello di escalation corrente
-		/// </summary>
-		private void PlayAudioForCurrentLevel()
-		{
-			string audioPath = GetAudioPathForLevel(_currentAudioLevel);
-			float volume = GetVolumeForLevel(_currentAudioLevel);
-
-			// Broadcast evento audio
-			_broadcaster.Broadcast(new PlaySeatBeltAudioEvent(
-				audioPath, volume, AudioData.SEATBELT_AUDIO_PRIORITY, _currentAudioLevel));
-
-			Debug.Log($"[SEATBELT FEATURE] 🔊 Audio riprodotto: {_currentAudioLevel} (vol: {volume:F1})");
-		}
-
-		/// <summary>
-		/// Ottiene path audio per livello escalation
-		/// </summary>
 		private string GetAudioPathForLevel(AudioEscalationLevel level)
 		{
 			return level switch
 			{
-				AudioEscalationLevel.Soft => SeatBeltData.SOFT_BEEP_AUDIO_PATH,
 				AudioEscalationLevel.Urgent => SeatBeltData.URGENT_BEEP_AUDIO_PATH,
 				AudioEscalationLevel.Continuous => SeatBeltData.CONTINUOUS_BEEP_AUDIO_PATH,
 				_ => SeatBeltData.SOFT_BEEP_AUDIO_PATH
-			};
-		}
-
-		/// <summary>
-		/// Ottiene volume per livello escalation
-		/// </summary>
-		private float GetVolumeForLevel(AudioEscalationLevel level)
-		{
-			return level switch
-			{
-				AudioEscalationLevel.Soft => AudioData.SEATBELT_SOFT_VOLUME,
-				AudioEscalationLevel.Urgent => AudioData.SEATBELT_URGENT_VOLUME,
-				AudioEscalationLevel.Continuous => AudioData.SEATBELT_CONTINUOUS_VOLUME,
-				_ => AudioData.SEATBELT_SOFT_VOLUME
 			};
 		}
 
@@ -538,9 +289,11 @@ namespace ClusterAudiFeatures
 
 		#region Helper Methods
 
-		/// <summary>
-		/// Verifica se ci sono cinture slacciate
-		/// </summary>
+		private void OnSpeedChanged(float newSpeed)
+		{
+			EvaluateWarningSystem();
+		}
+
 		private bool HasUnfastenedBelts()
 		{
 			for (int i = 0; i < SeatBeltData.TOTAL_SEATBELTS; i++)
@@ -551,9 +304,6 @@ namespace ClusterAudiFeatures
 			return false;
 		}
 
-		/// <summary>
-		/// Ottiene array delle posizioni con cinture slacciate
-		/// </summary>
 		private SeatBeltData.SeatBeltPosition[] GetUnfastenedBeltPositions()
 		{
 			var unfastened = new System.Collections.Generic.List<SeatBeltData.SeatBeltPosition>();
@@ -569,192 +319,34 @@ namespace ClusterAudiFeatures
 			return unfastened.ToArray();
 		}
 
-		/// <summary>
-		/// Inizializza stati realistici per testing (simulazione sensori CAN)
-		/// </summary>
-		private void InitializeRealisticSeatBeltStates()
-		{
-			// NUOVO: Tutte le cinture iniziano slacciate per testing
-			_seatBeltStates[0] = SeatBeltData.SeatBeltStatus.Unfastened;  // Driver
-			_seatBeltStates[1] = SeatBeltData.SeatBeltStatus.Unfastened;  // Passenger 
-			_seatBeltStates[2] = SeatBeltData.SeatBeltStatus.Unfastened;  // Rear Left
-			_seatBeltStates[3] = SeatBeltData.SeatBeltStatus.Unfastened;  // Rear Right
-
-			Debug.Log("[SEATBELT FEATURE] 🔧 Stati iniziali: TUTTE LE CINTURE SLACCIATE (D=❌ P=❌ RL=❌ RR=❌)");
-		}
-
 		#endregion
 
-		#region Fallback Creation (Development)
+		#region Fallback Creation
 
-		// SOSTITUISCI il metodo CreateSeatBeltDynamically nel tuo SeatBeltFeature.cs
-		// con questa versione CORRETTA:
-
-		/// <summary>
-		/// Creazione dinamica per development (quando prefab non disponibile)
-		/// VERSIONE CORRETTA - Crea UI GameObject con RectTransform
-		/// </summary>
 		private async Task CreateSeatBeltDynamically()
 		{
-			Debug.Log("[SEATBELT FEATURE] 🔧 Creazione dinamica seatbelt...");
-
+			Debug.Log("[SEATBELT FEATURE] 🔧 Creazione dinamica fallback...");
 			await Task.Delay(100);
 
-			// 1. TROVA O CREA CANVAS ESISTENTE
-			Canvas existingCanvas = Object.FindObjectOfType<Canvas>();
+			var canvasObj = new GameObject("SeatBeltCanvas");
+			var canvas = canvasObj.AddComponent<Canvas>();
+			canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+			canvas.sortingOrder = 15;
 
-			if (existingCanvas == null)
-			{
-				// Crea nuovo canvas se non esiste
-				var canvasObject = new GameObject("SeatBeltCanvas");
-				var canvas = canvasObject.AddComponent<Canvas>();
-				canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-				canvas.sortingOrder = 15; // Sopra speedometer ma sotto warnings critici
+			var seatBeltObj = new GameObject("SeatBelt", typeof(RectTransform));
+			seatBeltObj.transform.SetParent(canvas.transform, false);
 
-				// Aggiungi CanvasScaler e GraphicRaycaster
-				var canvasScaler = canvasObject.AddComponent<CanvasScaler>();
-				canvasScaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-				canvasScaler.referenceResolution = new Vector2(1920, 1080);
+			var rectTransform = seatBeltObj.GetComponent<RectTransform>();
+			rectTransform.anchorMin = new Vector2(0.7f, 0.1f);
+			rectTransform.anchorMax = new Vector2(0.95f, 0.4f);
+			rectTransform.anchoredPosition = Vector2.zero;
+			rectTransform.sizeDelta = Vector2.zero;
 
-				canvasObject.AddComponent<GraphicRaycaster>();
-				existingCanvas = canvas;
-
-				Debug.Log("[SEATBELT FEATURE] ✅ Nuovo Canvas creato");
-			}
-			else
-			{
-				Debug.Log("[SEATBELT FEATURE] ✅ Canvas esistente trovato");
-			}
-
-			// 2. CREA UI GAMEOBJECT CON RECTTRANSFORM
-			// IMPORTANTE: Usa il metodo corretto per creare UI GameObject
-			var seatBeltObject = new GameObject("SeatBelt", typeof(RectTransform));
-			seatBeltObject.transform.SetParent(existingCanvas.transform, false);
-
-			// 3. SETUP RECTTRANSFORM CORRETTAMENTE
-			var rectTransform = seatBeltObject.GetComponent<RectTransform>();
-			if (rectTransform != null)
-			{
-				rectTransform.anchorMin = new Vector2(0.7f, 0.1f);  // Bottom-right
-				rectTransform.anchorMax = new Vector2(0.95f, 0.4f); // Dimensioni moderate
-				rectTransform.anchoredPosition = Vector2.zero;
-				rectTransform.sizeDelta = Vector2.zero;
-
-				Debug.Log("[SEATBELT FEATURE] ✅ RectTransform configurato");
-			}
-			else
-			{
-				Debug.LogError("[SEATBELT FEATURE] ❌ RectTransform non trovato dopo creazione!");
-				return;
-			}
-
-			// 4. AGGIUNGI BEHAVIOUR
-			var seatBeltBehaviour = seatBeltObject.AddComponent<SeatBeltBehaviour>();
-			if (seatBeltBehaviour == null)
-			{
-				Debug.LogError("[SEATBELT FEATURE] ❌ Impossibile aggiungere SeatBeltBehaviour!");
-				return;
-			}
-
-			// 5. CREA COMPONENTI UI DINAMICAMENTE (TEMPORARY)
-			await CreateBasicUIComponents(seatBeltObject);
-
-			// 6. INIZIALIZZA BEHAVIOUR
-			seatBeltBehaviour.Initialize(this);
-			_seatBeltBehaviour = seatBeltBehaviour;
-
-			// 7. APPLICA CONFIGURAZIONE
-			_seatBeltBehaviour.ApplyConfiguration(_currentConfiguration);
+			_seatBeltBehaviour = seatBeltObj.AddComponent<SeatBeltBehaviour>();
+			_seatBeltBehaviour.Initialize(this);
 			_seatBeltBehaviour.UpdateAllSeatBeltStates(_seatBeltStates);
 
-			Debug.Log("[SEATBELT FEATURE] ✅ SeatBelt creato dinamicamente con RectTransform");
-		}
-
-		/// <summary>
-		/// NUOVO: Crea componenti UI basic per testing dinamico
-		/// </summary>
-		private async Task CreateBasicUIComponents(GameObject parent)
-		{
-			await Task.Delay(50);
-
-			Debug.Log("[SEATBELT FEATURE] 🔧 Creazione componenti UI basic...");
-
-			// Crea container per icone
-			var iconsContainer = new GameObject("IconsContainer", typeof(RectTransform));
-			iconsContainer.transform.SetParent(parent.transform, false);
-
-			var iconsRect = iconsContainer.GetComponent<RectTransform>();
-			iconsRect.anchorMin = Vector2.zero;
-			iconsRect.anchorMax = Vector2.one;
-			iconsRect.sizeDelta = Vector2.zero;
-			iconsRect.anchoredPosition = Vector2.zero;
-
-			// Crea 4 icone placeholder (semplici Image)
-			for (int i = 0; i < 4; i++)
-			{
-				var iconObject = new GameObject($"SeatBeltIcon_{i}", typeof(RectTransform));
-				iconObject.transform.SetParent(iconsContainer.transform, false);
-
-				// Aggiungi Image component
-				var image = iconObject.AddComponent<Image>();
-				image.color = SeatBeltData.GetColorForStatus(SeatBeltData.SeatBeltStatus.Unknown);
-
-				// Setup posizione (layout 2x2)
-				var iconRect = iconObject.GetComponent<RectTransform>();
-				float x = (i % 2) * 0.6f + 0.2f; // 0.2 o 0.8
-				float y = (i < 2) ? 0.7f : 0.3f;  // Top o bottom
-
-				iconRect.anchorMin = new Vector2(x - 0.1f, y - 0.1f);
-				iconRect.anchorMax = new Vector2(x + 0.1f, y + 0.1f);
-				iconRect.sizeDelta = Vector2.zero;
-				iconRect.anchoredPosition = Vector2.zero;
-
-				Debug.Log($"[SEATBELT FEATURE] ✅ Icona {i} creata a ({x}, {y})");
-			}
-
-			// Crea warning panel placeholder
-			var warningPanel = new GameObject("WarningPanel", typeof(RectTransform));
-			warningPanel.transform.SetParent(parent.transform, false);
-			warningPanel.SetActive(false); // Inizialmente nascosto
-
-			var warningRect = warningPanel.GetComponent<RectTransform>();
-			warningRect.anchorMin = new Vector2(0.1f, 0.4f);
-			warningRect.anchorMax = new Vector2(0.9f, 0.6f);
-			warningRect.sizeDelta = Vector2.zero;
-			warningRect.anchoredPosition = Vector2.zero;
-
-			// Aggiungi background al warning panel
-			var warningBg = warningPanel.AddComponent<Image>();
-			warningBg.color = new Color(1f, 0f, 0f, 0.3f); // Rosso trasparente
-
-			Debug.Log("[SEATBELT FEATURE] ✅ Componenti UI basic creati");
-		}
-
-		#endregion
-
-		#region Cleanup
-
-		/// <summary>
-		/// Cleanup quando feature viene distrutta
-		/// </summary>
-		~SeatBeltFeature()
-		{
-			// Rimuovi sottoscrizione eventi
-			if (_broadcaster != null)
-			{
-				_broadcaster.Remove<DriveModeChangedEvent>(OnDriveModeChanged);
-			}
-
-			if (_vehicleDataService != null)
-			{
-				_vehicleDataService.OnSpeedChanged -= OnSpeedChanged;
-			}
-
-			// Stop warning system se attivo
-			if (_isWarningSystemActive)
-			{
-				StopWarningSystem(SeatBeltWarningStopReason.SystemDisabled);
-			}
+			Debug.Log("[SEATBELT FEATURE] ✅ Fallback dinamico creato");
 		}
 
 		#endregion
